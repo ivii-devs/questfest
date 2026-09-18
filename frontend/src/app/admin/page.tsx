@@ -78,7 +78,7 @@ export default function AdminDashboard() {
    */
   useEffect(() => {
     if (!authLoading && !groupLoading && !isAdmin) {
-      router.replace('/');
+      router.replace('/feed');
     }
   }, [authLoading, groupLoading, isAdmin, router]);
 
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <Link
-            href="/"
+            href="/feed"
             className="p-2 bg-dracula-card rounded-lg text-dracula-gray hover:text-dracula-light transition-colors btn-press"
           >
             <ChevronLeft size={20} />

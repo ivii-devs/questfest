@@ -193,7 +193,7 @@ function WelcomeHubContent() {
   const handleSelectGroup = (group: GroupMembership) => {
     setActiveGroupById(group.id);
     toast.success(`Entrando a: ${group.nombre}`);
-    router.push('/');
+    router.push('/feed');
   };
 
   /**

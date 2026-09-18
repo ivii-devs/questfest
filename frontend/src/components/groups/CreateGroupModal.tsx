@@ -110,7 +110,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
       removeSelectedImage();
       onClose();
       // Redirigimos al feed del nuevo grupo
-      router.push('/');
+      router.push('/feed');
     } catch (error: any) {
       console.error('[CreateGroupModal] Error al crear grupo:', error);
       const detail = error.response?.data?.detail || 'No se pudo crear el grupo';

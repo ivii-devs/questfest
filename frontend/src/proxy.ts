@@ -45,9 +45,9 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Si el usuario ya cuenta con sesión iniciada pero visita /login o /register
-  if (token && isAuthRoute) {
-    // Lo redirigimos al Hub de Bienvenida / selector de grupos
+  // Si el usuario ya cuenta con sesión iniciada pero visita /login o /register, o entra a la raíz /,
+  // lo redirigimos forzosamente al Hub de Bienvenida (/groups) en el perímetro de red (0 ms de latencia)
+  if (token && (isAuthRoute || pathname === '/')) {
     const groupsUrl = new URL('/groups', request.url);
     return NextResponse.redirect(groupsUrl);
   }

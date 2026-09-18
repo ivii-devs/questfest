@@ -50,7 +50,7 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
       if (res.data?.grupo?.id) {
         setActiveGroupById(res.data.grupo.id);
       }
-      router.push('/');
+      router.push('/feed');
     } catch (error: any) {
       console.error('[DeepLinkJoin] Error al unirse:', error);
       const detail = error.response?.data?.detail || 'No se pudo procesar la invitación';

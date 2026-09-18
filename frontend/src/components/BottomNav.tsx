@@ -42,13 +42,13 @@ export default function BottomNav() {
     if (!user || !activeGroup || authLoading || groupsLoading || isExcludedPath) return;
 
     // Si estamos en la página del feed, marcamos que no hay posts pendientes
-    if (pathname === '/') {
+    if (pathname === '/feed') {
       setHasNewPosts(false);
     }
 
     const checkLatestPost = async () => {
       try {
-        if (pathname === '/') return; 
+        if (pathname === '/feed') return; 
         
         const params = activeGroup ? { group_id: activeGroup.id } : {};
         const res = await api.get('/api/feed/latest-id', { params });
@@ -83,7 +83,7 @@ export default function BottomNav() {
 
   // Definición base de las 6 pestañas con sus identidades cromáticas de panel
   const baseItems = [
-    { name: 'Feed', icon: Home, path: '/', colorClass: 'text-dracula-purple', bgClass: 'bg-dracula-purple/20' },
+    { name: 'Feed', icon: Home, path: '/feed', colorClass: 'text-dracula-purple', bgClass: 'bg-dracula-purple/20' },
     { name: 'Ranking', icon: Trophy, path: '/ranking', colorClass: 'text-dracula-yellow', bgClass: 'bg-dracula-yellow/20' },
     { name: 'Apuestas', icon: Dice5, path: '/bets', colorClass: 'text-dracula-yellow', bgClass: 'bg-dracula-yellow/20' },
     { name: 'Misiones', icon: Target, path: '/missions', colorClass: 'text-dracula-green', bgClass: 'bg-dracula-green/20' },
@@ -132,7 +132,7 @@ export default function BottomNav() {
               />
 
               {/* Indicador de nuevos posts no leídos en el feed */}
-              {item.path === '/' && hasNewPosts && !isActive && (
+              {item.path === '/feed' && hasNewPosts && !isActive && (
                 <span className="absolute top-1 right-2 w-2 h-2 bg-dracula-red rounded-full border border-dracula-base animate-pulse shadow-md"></span>
               )}
 

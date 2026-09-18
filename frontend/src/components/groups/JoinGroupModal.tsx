@@ -53,7 +53,7 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
 
       onClose();
       // Redirigir al feed del grupo ingresado
-      router.push('/');
+      router.push('/feed');
     } catch (error: any) {
       console.error('[JoinGroupModal] Error al unirse al grupo:', error);
       const detail = error.response?.data?.detail || 'Error al unirse al grupo';
