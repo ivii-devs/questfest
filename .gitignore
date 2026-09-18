@@ -1,0 +1,119 @@
+# ==============================================================================
+# .gitignore Raíz - QuestFest Architecture
+# ==============================================================================
+# Este archivo asegura que ninguna credencial, secreto, dependencia masiva
+# o archivo temporal local se incluya por error en el control de versiones de Git.
+
+# ------------------------------------------------------------------------------
+# 1. Variables de Entorno y Secretos Sensibles (¡NUNCA SUBIR A GIT!)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+*.env
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development
+
+# Permitimos explícitamente subir las plantillas de ejemplo sin secretos
+!*.env.example
+
+# ------------------------------------------------------------------------------
+# 2. Python y Backend (FastAPI, Pytest, Entornos Virtuales)
+# ------------------------------------------------------------------------------
+# Entornos virtuales locales (evita subir cientos de megabytes de librerías)
+venv/
+.venv/
+backend/venv/
+backend/.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Archivos de caché compilados de Python
+__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Caché de pruebas automáticas (Pytest)
+.pytest_cache/
+backend/.pytest_cache/
+.coverage
+htmlcov/
+
+# Bases de datos SQLite locales de prueba
+*.sqlite3
+*.db
+
+# Scripts auxiliares y de mantenimiento local (ocultos de GitHub)
+backend/app/scripts/
+scripts/
+
+# ------------------------------------------------------------------------------
+# 3. Node.js y Frontend (Next.js 16+, TypeScript, Tailwind)
+# ------------------------------------------------------------------------------
+# Módulos y dependencias descargadas
+node_modules/
+frontend/node_modules/
+.pnp
+.pnp.js
+
+# Compilación y caché de Next.js
+.next/
+frontend/.next/
+out/
+frontend/out/
+build/
+frontend/build/
+dist/
+
+# Metadatos y diagnósticos de TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Logs de depuración de gestores de paquetes
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 4. Certificados SSL/TLS y Claves Criptográficas
+# ------------------------------------------------------------------------------
+certbot/
+letsencrypt/
+*.pem
+*.key
+*.crt
+*.pfx
+*.csr
+
+# ------------------------------------------------------------------------------
+# 5. Archivos del Sistema Operativo e IDEs
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+
+# Editores de código (VS Code, JetBrains)
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# ------------------------------------------------------------------------------
+# 6. Obsidian Vault (Estado de sesión local del usuario)
+# ------------------------------------------------------------------------------
+obsidian_vault/.obsidian/workspace.json

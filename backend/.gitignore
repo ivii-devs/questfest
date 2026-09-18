@@ -1,0 +1,32 @@
+# ==============================================================================
+# .gitignore Backend (FastAPI + Python)
+# ==============================================================================
+# Variables de entorno con contraseñas y claves privadas
+.env
+.env.*
+*.env
+!*.env.example
+
+# Cachés compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales locales
+venv/
+.venv/
+env/
+ENV/
+
+# Pruebas y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Bases de datos temporales
+*.sqlite3
+*.db
+
+# Scripts locales de mantenimiento (ocultos de Git)
+app/scripts/
+scripts/
