@@ -31,3 +31,31 @@ Sigue este procedimiento cuando una tarea requiera persistir o publicar cambios 
   - Detén la ejecución de herramientas y espera la confirmación explícita del usuario.
 - [ ] **Paso 5: Ejecución Tras Autorización**
   - Ejecuta los comandos aprobados única y exclusivamente tras recibir la confirmación afirmativa del usuario.
+
+---
+
+## 3. Estrategia de Preparación de Cambios: Carpetas Lógicas
+
+Al existir múltiples modificaciones dispersas en el repositorio (frontend, backend, vault, etc.), **se debe priorizar la preparación por carpetas o módulos temáticos** (`git add <carpeta>/`) en lugar de listar archivos uno por uno o realizar inclusiones masivas indiscriminadas (`git add .`).
+
+### Ejemplos de uso por ámbito:
+- **Frontend por características:**
+  ```bash
+  git add frontend/src/components/groups/
+  git add frontend/src/components/admin/
+  ```
+- **Backend por capas o módulos:**
+  ```bash
+  git add backend/app/routers/
+  git add backend/app/models/
+  ```
+- **Documentación de Obsidian:**
+  ```bash
+  git add obsidian_vault/
+  ```
+- **Configuración o Agentes:**
+  ```bash
+  git add .agents/
+  ```
+
+*Nota:* Si un cambio específico asocia únicamente dos o tres archivos puntuales distribuidos en distintas rutas (por ejemplo, una página y su componente modal), agrúpalos en un único comando: `git add ruta/archivo1 ruta/archivo2`.

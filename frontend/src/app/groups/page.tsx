@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Users,
   User,
@@ -17,7 +17,11 @@ import {
   Bell,
   Download,
   Info,
-  Check
+  Check,
+  Camera,
+  Pencil,
+  X,
+  Loader2
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +33,7 @@ import { subscribeToPushNotifications, isPushActive } from '@/lib/pushNotificati
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import ThemeSettingsCard from '@/components/ThemeSettingsCard';
+import api from '@/lib/axios';
 
 /**
  * Hub de Bienvenida (Welcome Hub) de QuestFest (/groups).
@@ -45,7 +50,7 @@ function WelcomeHubContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as 'grupos' | 'perfil' | 'ajustes' | null;
 
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const { groups, activeGroup, loading, setActiveGroupById, leaveGroup } = useGroup();
 
   const [activeTab, setActiveTab] = useState<'grupos' | 'perfil' | 'ajustes'>(initialTab || 'grupos');
@@ -62,16 +67,128 @@ function WelcomeHubContent() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
 
-  useEffect(() => {
-    isPushActive().then(setPushEnabled);
-  }, []);
+  // --- Estados y referencias para edición in-place de la Identidad Global ---
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
-  // Cerrar menú contextual al hacer clic fuera
-  useEffect(() => {
-    const handleClickOutside = () => setOpenMenuId(null);
-    window.addEventListener('click', handleClickOutside);
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, []);
+  // Edición in-place del nombre de usuario
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [usernameDraft, setUsernameDraft] = useState('');
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
+
+  // Edición in-place de la biografía / estado
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [bioDraft, setBioDraft] = useState('');
+  const [isSavingBio, setIsSavingBio] = useState(false);
+
+  /**
+   * Dispara el selector nativo de archivos para actualizar la foto de perfil.
+   */
+  const handleAvatarClick = () => {
+    if (!isUploadingAvatar) {
+      avatarInputRef.current?.click();
+    }
+  };
+
+  /**
+   * Sube la imagen seleccionada a Cloudinary vía API y refresca el perfil global.
+   */
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecciona un archivo de imagen válido');
+      return;
+    }
+
+    // Límite de 5MB para proteger cuota y agilizar subida en redes móviles
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no debe superar los 5MB');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    const toastId = toast.loading('Subiendo foto de perfil...');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      await api.put('/api/auth/me/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      await refreshProfile();
+      toast.success('Foto de perfil actualizada en todos los grupos', { id: toastId });
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } };
+      toast.error(err.response?.data?.detail || 'Error al subir la foto de perfil', { id: toastId });
+    } finally {
+      setIsUploadingAvatar(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
+  };
+
+  /**
+   * Guarda el alias modificado directamente en la cuenta global del usuario.
+   */
+  const handleSaveUsername = async () => {
+    const trimmed = usernameDraft.trim();
+    if (!trimmed) {
+      toast.error('El nombre de usuario no puede estar vacío');
+      return;
+    }
+    if (trimmed === user?.username) {
+      setIsEditingUsername(false);
+      return;
+    }
+    if (trimmed.length < 3) {
+      toast.error('El alias debe tener al menos 3 caracteres');
+      return;
+    }
+
+    setIsSavingUsername(true);
+    const toastId = toast.loading('Actualizando alias...');
+    try {
+      await api.patch('/api/auth/me', { username: trimmed });
+      await refreshProfile();
+      toast.success('Nombre de usuario actualizado', { id: toastId });
+      setIsEditingUsername(false);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } };
+      toast.error(err.response?.data?.detail || 'Error al actualizar el nombre de usuario', { id: toastId });
+    } finally {
+      setIsSavingUsername(false);
+    }
+  };
+
+  /**
+   * Guarda la biografía o estado modificado en la cuenta global.
+   */
+  const handleSaveBio = async () => {
+    const trimmed = bioDraft.trim();
+    if (trimmed === (user?.bio || '')) {
+      setIsEditingBio(false);
+      return;
+    }
+
+    setIsSavingBio(true);
+    const toastId = toast.loading('Actualizando descripción...');
+    try {
+      await api.patch('/api/auth/me', { bio: trimmed });
+      await refreshProfile();
+      toast.success('Descripción actualizada', { id: toastId });
+      setIsEditingBio(false);
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } } };
+      toast.error(err.response?.data?.detail || 'Error al actualizar la descripción', { id: toastId });
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
 
   const handleSelectGroup = (group: GroupMembership) => {
     setActiveGroupById(group.id);
@@ -396,44 +513,221 @@ function WelcomeHubContent() {
         {/* ======================================================== */}
         {activeTab === 'perfil' && (
           <div className="space-y-5 animate-fade-in max-w-lg mx-auto">
-            {/* Tarjeta de Identidad Global */}
+            {/* Tarjeta de Identidad Global con Edición Directa In-Place */}
             <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-6 text-center relative overflow-hidden shadow-xl">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-dracula-purple to-[#ff79c6] flex items-center justify-center text-4xl font-black text-dracula-base shadow-[0_0_25px_rgba(189,147,249,0.4)] mx-auto mb-4 overflow-hidden">
-                {user?.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.username}
-                    className="w-full h-full object-cover"
-                  />
+              {/* Input oculto para subida de imagen directa a Cloudinary */}
+              <input
+                type="file"
+                ref={avatarInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+                disabled={isUploadingAvatar}
+              />
+
+              {/* Contenedor Interactivo del Avatar */}
+              <div className="relative inline-block mx-auto mb-3">
+                <button
+                  type="button"
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  aria-label="Cambiar foto de perfil"
+                  className="w-24 h-24 rounded-full bg-gradient-to-tr from-dracula-purple to-[#ff79c6] flex items-center justify-center text-4xl font-black text-dracula-base shadow-[0_0_25px_rgba(189,147,249,0.4)] overflow-hidden relative group cursor-pointer transition-transform hover:scale-105 btn-press border-2 border-transparent hover:border-dracula-purple disabled:cursor-wait"
+                >
+                  {user?.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.username}
+                      className={`w-full h-full object-cover transition-opacity ${
+                        isUploadingAvatar ? 'opacity-40' : 'opacity-100'
+                      }`}
+                    />
+                  ) : (
+                    <span className={isUploadingAvatar ? 'opacity-40' : 'opacity-100'}>
+                      {user?.username?.charAt(0).toUpperCase() || '?'}
+                    </span>
+                  )}
+
+                  {/* Overlay táctil / hover para sugerir cambio de imagen */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera size={26} className="text-white drop-shadow-md" />
+                  </div>
+
+                  {/* Indicador de carga durante la subida a Cloudinary */}
+                  {isUploadingAvatar && (
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <Loader2 size={28} className="text-dracula-purple animate-spin" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Badge flotante inferior derecho con icono de cámara */}
+                <button
+                  type="button"
+                  onClick={handleAvatarClick}
+                  disabled={isUploadingAvatar}
+                  aria-label="Subir foto de perfil"
+                  className="absolute bottom-0 right-0 p-2 bg-dracula-base border border-dracula-purple/50 text-dracula-purple rounded-full shadow-lg hover:bg-dracula-purple hover:text-dracula-base transition-colors btn-press cursor-pointer"
+                >
+                  <Camera size={14} />
+                </button>
+              </div>
+
+              {/* Subtexto sutil de ayuda */}
+              <p className="text-[11px] text-dracula-gray mb-4 font-semibold">
+                {isUploadingAvatar ? 'Subiendo imagen a Cloudinary...' : 'Toca la foto para cambiar tu avatar global'}
+              </p>
+
+              {/* Campo 1: Nombre de Usuario (Edición In-Place) */}
+              <div className="mb-4">
+                {isEditingUsername ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSaveUsername();
+                    }}
+                    className="flex items-center justify-center gap-2 max-w-xs mx-auto"
+                  >
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray font-bold text-sm">
+                        @
+                      </span>
+                      <input
+                        type="text"
+                        value={usernameDraft}
+                        onChange={(e) => setUsernameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setIsEditingUsername(false);
+                            setUsernameDraft('');
+                          }
+                        }}
+                        autoFocus
+                        disabled={isSavingUsername}
+                        className="w-full bg-dracula-base border border-dracula-purple rounded-xl py-1.5 pl-7 pr-2.5 text-sm font-bold text-dracula-light focus:outline-none focus:ring-2 focus:ring-dracula-purple/50 transition-all"
+                        placeholder="tu_alias"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isSavingUsername}
+                      aria-label="Guardar nombre de usuario"
+                      className="p-2 bg-dracula-green text-dracula-base rounded-xl font-bold hover:brightness-110 transition-all btn-press disabled:opacity-50"
+                    >
+                      {isSavingUsername ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingUsername(false);
+                        setUsernameDraft('');
+                      }}
+                      disabled={isSavingUsername}
+                      aria-label="Cancelar edición de nombre"
+                      className="p-2 bg-dracula-base border border-dracula-gray/30 text-dracula-gray hover:text-dracula-light rounded-xl font-bold transition-all btn-press disabled:opacity-50"
+                    >
+                      <X size={16} />
+                    </button>
+                  </form>
                 ) : (
-                  user?.username?.charAt(0).toUpperCase() || '?'
+                  <div className="flex items-center justify-center gap-2">
+                    <h2
+                      onClick={() => {
+                        setUsernameDraft(user?.username || '');
+                        setIsEditingUsername(true);
+                      }}
+                      className="text-xl font-black text-dracula-light cursor-pointer hover:text-dracula-purple transition-colors flex items-center gap-1.5 group"
+                      title="Clic para editar tu nombre de usuario"
+                    >
+                      <span>@{user?.username}</span>
+                      <span className="p-1 rounded-md text-dracula-gray opacity-60 group-hover:opacity-100 group-hover:text-dracula-purple group-hover:bg-dracula-base/80 transition-all">
+                        <Pencil size={14} />
+                      </span>
+                    </h2>
+                  </div>
                 )}
               </div>
 
-              <h2 className="text-xl font-black text-dracula-light mb-0.5">
-                @{user?.username}
-              </h2>
-              <span className="text-xs text-dracula-gray block mb-3">
-                Identidad Global de Cuenta
-              </span>
+              {/* Campo 2: Biografía / Estado (Edición In-Place) */}
+              <div className="mb-2">
+                {isEditingBio ? (
+                  <div className="space-y-2 text-left">
+                    <div className="relative">
+                      <textarea
+                        value={bioDraft}
+                        onChange={(e) => setBioDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setIsEditingBio(false);
+                            setBioDraft('');
+                          }
+                        }}
+                        autoFocus
+                        disabled={isSavingBio}
+                        maxLength={150}
+                        rows={3}
+                        placeholder="Escribe un estado o algo sobre ti para que te reconozcan..."
+                        className="w-full bg-dracula-base border border-dracula-purple rounded-xl p-3 text-sm text-dracula-light focus:outline-none focus:ring-2 focus:ring-dracula-purple/50 resize-none transition-all placeholder:text-dracula-gray/60 placeholder:italic"
+                      />
+                      <div className="text-[10px] text-right text-dracula-gray mt-1">
+                        {bioDraft.length} / 150 caracteres
+                      </div>
+                    </div>
 
-              {user?.bio ? (
-                <p className="text-sm text-dracula-light/90 italic bg-dracula-base/60 p-3 rounded-xl border border-dracula-gray/20 mb-4">
-                  &ldquo;{user.bio}&rdquo;
-                </p>
-              ) : (
-                <p className="text-xs text-dracula-gray italic mb-4">
-                  Sin biografía añadida aún.
-                </p>
-              )}
-
-              <Link
-                href="/settings/editar"
-                className="inline-flex items-center gap-2 py-2.5 px-5 bg-dracula-base border border-dracula-purple/50 text-dracula-purple hover:bg-dracula-purple hover:text-dracula-base rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md"
-              >
-                <Settings size={14} />
-                <span>Editar Información Global</span>
-              </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingBio(false);
+                          setBioDraft('');
+                        }}
+                        disabled={isSavingBio}
+                        className="py-1.5 px-3 bg-dracula-base border border-dracula-gray/30 text-dracula-gray hover:text-dracula-light rounded-xl font-bold text-xs transition-all btn-press disabled:opacity-50 flex items-center gap-1"
+                      >
+                        <X size={14} /> Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveBio}
+                        disabled={isSavingBio}
+                        className="py-1.5 px-4 bg-dracula-purple text-dracula-base rounded-xl font-bold text-xs hover:brightness-110 transition-all btn-press disabled:opacity-50 flex items-center gap-1.5 shadow-md"
+                      >
+                        {isSavingBio ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> Guardando...
+                          </>
+                        ) : (
+                          <>
+                            <Check size={14} /> Guardar
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => {
+                      setBioDraft(user?.bio || '');
+                      setIsEditingBio(true);
+                    }}
+                    className="cursor-pointer group relative p-3 rounded-xl border border-dracula-gray/20 hover:border-dracula-purple/50 bg-dracula-base/60 transition-all"
+                    title="Clic para editar tu descripción o estado"
+                  >
+                    <div className="absolute top-2.5 right-2.5 text-dracula-gray opacity-40 group-hover:opacity-100 group-hover:text-dracula-purple transition-all">
+                      <Pencil size={13} />
+                    </div>
+                    {user?.bio ? (
+                      <p className="text-sm text-dracula-light/90 italic pr-5">
+                        &ldquo;{user.bio}&rdquo;
+                      </p>
+                    ) : (
+                      <p className="text-xs text-dracula-gray italic pr-5">
+                        Sin biografía aún. Toca aquí para añadir un estado o descripción...
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Banner explicativo del Aislamiento de Estadísticas */}

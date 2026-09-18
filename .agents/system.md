@@ -60,6 +60,7 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 - **Fuente**: [workflows/git-approval-flow.md](workflows/git-approval-flow.md).
 - **PROHIBIDO** ejecutar `git commit`, `git push` o alterar ramas remotas sin consulta previa y autorización explícita del usuario.
 - Los commits deben ser **simples**, redactados en **español** y con un **lenguaje claro y no excesivamente técnico**.
+- **Preparación por carpetas lógicas**: Priorizar `git add <carpeta>/` por áreas temáticas (backend, componentes frontend, vault, etc.) para mantener los commits limpios y atómicos.
 - Presenta el estado (`git status`, `git diff --stat`), la propuesta de mensaje y espera confirmación antes de persistir cambios.
 
 ---

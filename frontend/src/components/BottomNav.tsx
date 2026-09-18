@@ -27,13 +27,15 @@ export default function BottomNav() {
   const { activeGroup, loading: groupsLoading } = useGroup();
   const [hasNewPosts, setHasNewPosts] = useState(false);
 
-  // Ocultar la barra en vistas fuera de un grupo
+  // Ocultar la barra en vistas fuera de un grupo o de configuración/perfil global
   const isExcludedPath = 
     pathname.startsWith('/groups') ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
     pathname.startsWith('/join') ||
-    pathname.startsWith('/offline');
+    pathname.startsWith('/offline') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/perfil');
 
   useEffect(() => {
     // Si no hay usuario logueado, no hay grupo activo o estamos en vistas excluidas/cargando, no hacemos polling
