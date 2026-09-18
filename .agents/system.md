@@ -55,11 +55,12 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 - Toda alteración de lógica, modelos, endpoints o arquitectura debe sincronizarse con `obsidian_vault/`.
 - Reglas inmutables: denominaciones exactas "QuestFest" y "QuestCoins", **CERO emojis**, redacción impersonal técnica en 3ª persona, principio de doble explicación (técnica + analogía) y enlaces a código con protocolo `vscode://file/...:line`.
 
-### 6. Prohibición Autónoma de Git
+### 6. Prohibición Autónoma de Git y Estilo de Commits
 
 - **Fuente**: [workflows/git-approval-flow.md](workflows/git-approval-flow.md).
 - **PROHIBIDO** ejecutar `git commit`, `git push` o alterar ramas remotas sin consulta previa y autorización explícita del usuario.
-- Presenta el estado (`git status`, `git diff --stat`), la propuesta de _Conventional Commit_ y espera confirmación antes de persistir cambios.
+- Los commits deben ser **simples**, redactados en **español** y con un **lenguaje claro y no excesivamente técnico**.
+- Presenta el estado (`git status`, `git diff --stat`), la propuesta de mensaje y espera confirmación antes de persistir cambios.
 
 ---
 

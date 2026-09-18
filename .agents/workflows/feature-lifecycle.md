@@ -58,5 +58,5 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
 
 - [ ] **Fase 5: Solicitud de Aprobación para Git**
   - Inspecciona el árbol de trabajo mediante comandos de solo lectura (`git status`, `git diff --stat`).
-  - Redacta una propuesta de mensaje de commit bajo *Conventional Commits*.
+  - Redacta una propuesta de mensaje de commit simple, en español y con lenguaje accesible y no excesivamente técnico.
   - Presenta el resumen al usuario y solicita autorización previa según [workflows/git-approval-flow.md](git-approval-flow.md).
