@@ -4,6 +4,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { formatSpanishDate } from '@/lib/formatters';
 import { CheckCircle, XCircle, Image as ImageIcon, MessageSquare, Target, ThumbsUp, ThumbsDown } from 'lucide-react';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export default function TabMisiones() {
   const [activeTab, setActiveTab] = useState<'sugerencias' | 'tribunal'>('sugerencias');
@@ -39,14 +40,14 @@ function SugerenciasView() {
   const [loading, setLoading] = useState(true);
   
   // States para edición rápida de sugerencias (id -> value)
-  const [edits, setEdits] = useState<Record<string, { reward: number }>>({});
+  const [edits, setEdits] = useState<Record<string, { reward: number | '' }>>({});
 
   const fetchSugerencias = async () => {
     try {
       const res = await api.get('/api/admin/misiones/sugerencias');
       setSugerencias(res.data);
       
-      const newEdits: Record<string, { reward: number }> = {};
+      const newEdits: Record<string, { reward: number | '' }> = {};
       res.data.forEach((s: any) => {
         newEdits[s.id] = { reward: s.reward };
       });
@@ -70,8 +71,10 @@ function SugerenciasView() {
   const handleAprobar = async (id: string) => {
     try {
       const editData = edits[id];
+      const orig = sugerencias.find(s => s.id === id);
+      const recompensaVal = editData?.reward === '' ? (orig?.reward ?? 100) : Number(editData?.reward);
       await api.patch(`/api/admin/misiones/${id}/sugerencia/aprobar`, {
-        recompensa: editData.reward
+        recompensa: recompensaVal
       });
       toast.success('Sugerencia aprobada y publicada');
       fetchSugerencias();
@@ -121,11 +124,12 @@ function SugerenciasView() {
           <div className="flex gap-4 p-3 bg-dracula-base rounded-lg border border-dracula-gray/10">
             <div className="flex-1 flex flex-col gap-1">
               <label className="text-[10px] font-bold uppercase text-dracula-gray">Recompensa (Tokens)</label>
-              <input 
-                type="number" 
-                value={edits[s.id]?.reward || ''} 
-                onChange={(e) => handleUpdateEdit(s.id, 'reward', parseInt(e.target.value) || 0)}
-                className="bg-dracula-card border border-dracula-gray/30 rounded p-2 text-sm text-dracula-yellow font-bold focus:outline-none focus:border-dracula-yellow"
+              <TokenAmountInput 
+                min={1}
+                value={edits[s.id]?.reward ?? ''} 
+                onChange={(val) => handleUpdateEdit(s.id, 'reward', val)}
+                placeholder="100"
+                className="w-full bg-dracula-card border border-dracula-gray/30 rounded-lg py-2 pl-9 pr-3 text-sm text-dracula-yellow font-bold focus:outline-none focus:border-dracula-yellow"
               />
             </div>
           </div>

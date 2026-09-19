@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { X, Users, Lock, Camera, Sparkles, Coins } from 'lucide-react';
+import { X, Users, Lock, Camera, Sparkles } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
 import { useRouter } from 'next/navigation';
 import { getApiErrorMessage } from '@/lib/errorHandler';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -25,7 +26,9 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
 
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [saldoInicial, setSaldoInicial] = useState<number>(100);
+  // Permitimos que el saldo inicial sea temporalmente '' durante el tecleo o borrado
+  // para evitar que se autocomplete con un '0' residual delante del nuevo número introducido
+  const [saldoInicial, setSaldoInicial] = useState<number | ''>(100);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,67 +41,75 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
 
   /**
    * Gestiona la selección del archivo de imagen desde el carrete o cámara del dispositivo.
+   * Valida que el archivo no supere los 5 MB para evitar saturar el ancho de banda PWA.
    */
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith('image/')) {
-        toast.error('Por favor, selecciona un archivo de imagen válido');
-        return;
-      }
-      setSelectedImage(file);
-      setImagePreview(URL.createObjectURL(file));
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo se permiten archivos de imagen');
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no puede superar los 5 MB');
+      return;
+    }
+
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   /**
-   * Limpia la foto seleccionada y revoca la URL del blob en memoria.
+   * Limpia la previsualización y el archivo seleccionado.
    */
   const removeSelectedImage = () => {
     setSelectedImage(null);
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-      setImagePreview(null);
-    }
+    setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  /**
+   * Envía la solicitud de creación de grupo al backend.
+   * Si se seleccionó una imagen, se sube primero como FormData multiparte.
+   * A continuación, se persiste la entidad en el backend y se activa automáticamente.
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim()) {
-      toast.error('Por favor, introduce un nombre para el grupo');
+      toast.error('El nombre del grupo es obligatorio');
       return;
     }
 
-    if (hasPassword && !password.trim()) {
-      toast.error('Has activado contraseña protegida, introduce una clave');
-      return;
-    }
-
+    setSubmitting(true);
     try {
-      setSubmitting(true);
       let icono_url: string | undefined = undefined;
 
-      // Si el usuario seleccionó una imagen desde su galería, la subimos a Cloudinary
+      // 1. Subir imagen si fue adjuntada por el usuario
       if (selectedImage) {
         const formData = new FormData();
         formData.append('file', selectedImage);
-
-        const uploadRes = await api.post('/api/upload/image', formData, {
+        const uploadRes = await api.post('/api/upload/', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        icono_url = uploadRes.data.secure_url;
+        icono_url = uploadRes.data?.url;
       }
 
+      // 2. Crear grupo con saldo inicial configurado (por defecto 100 si se dejó vacío)
       const payload: Record<string, any> = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         icono_url: icono_url,
         avatar_url: icono_url,
         password: hasPassword ? password.trim() : undefined,
-        saldo_inicial: Number(saldoInicial) >= 0 ? Number(saldoInicial) : 100,
+        saldo_inicial: saldoInicial === '' ? 100 : Math.max(0, Math.min(10000, Number(saldoInicial))),
       };
 
       const res = await api.post('/api/groups/', payload);
@@ -234,20 +245,16 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
             <label htmlFor="create-group-balance" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
               Saldo inicial de QuestCoins
             </label>
-            <div className="relative">
-              <Coins size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-yellow" />
-              <input
-                id="create-group-balance"
-                name="groupBalance"
-                type="number"
-                min={0}
-                max={10000}
-                value={saldoInicial}
-                onChange={(e) => setSaldoInicial(Math.max(0, Math.min(10000, parseInt(e.target.value, 10) || 0)))}
-                placeholder="100"
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
-              />
-            </div>
+            <TokenAmountInput
+              id="create-group-balance"
+              name="groupBalance"
+              min={0}
+              max={10000}
+              value={saldoInicial}
+              onChange={setSaldoInicial}
+              placeholder="100"
+              className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
+            />
             <p className="text-[10px] text-dracula-gray mt-1">
               Fondo inicial que recibirás tú y cada nuevo participante al unirse al grupo.
             </p>

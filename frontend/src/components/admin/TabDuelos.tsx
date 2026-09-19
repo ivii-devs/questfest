@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Trophy, Scale } from 'lucide-react';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export default function TabDuelos() {
   const [duels, setDuels] = useState<any[]>([]);
@@ -135,12 +136,12 @@ export default function TabDuelos() {
                       <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest block text-center mb-1">
                         Multa (Tokens)
                       </label>
-                      <input 
-                        type="number" 
+                      <TokenAmountInput 
                         placeholder="0" 
+                        min={1}
                         value={penalizeAmounts[duel.id] ?? ''}
-                        onChange={(e) => setPenalizeAmounts({...penalizeAmounts, [duel.id]: e.target.value === '' ? '' : Number(e.target.value)})}
-                        className="w-full bg-dracula-base rounded-lg py-2 px-3 text-sm font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red text-center"
+                        onChange={(val) => setPenalizeAmounts({...penalizeAmounts, [duel.id]: val})}
+                        className="w-full bg-dracula-base rounded-lg py-2 pl-9 pr-2 text-sm font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
                       />
                     </div>
                     <div className="flex-[2]">

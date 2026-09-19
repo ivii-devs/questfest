@@ -208,6 +208,7 @@ export default function TabApuestas() {
                                     min="1.1"
                                     className="w-full bg-transparent text-[#ffb86c] text-xs p-2 focus:outline-none font-mono"
                                     value={opt.multiplier}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
                                       const newOpts = [...editFormData.options];
                                       newOpts[idx].multiplier = parseFloat(e.target.value) || 1.1;

@@ -12,14 +12,14 @@ import {
   Save,
   UserCheck,
   Camera,
-  X,
-  Coins
+  X
 } from 'lucide-react';
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { copyToClipboard } from '@/lib/clipboard';
 import { getApiErrorMessage } from '@/lib/errorHandler';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 /**
  * Pestaña de Ajustes del Grupo para el Panel de Administración.
@@ -33,7 +33,8 @@ export default function TabGrupoSettings() {
 
   const [nombre, setNombre] = useState(activeGroup?.nombre || '');
   const [descripcion, setDescripcion] = useState(activeGroup?.descripcion || '');
-  const [saldoInicial, setSaldoInicial] = useState<number>(activeGroup?.saldo_inicial ?? 100);
+  // Permitimos '' mientras el usuario edita para evitar que aparezca un 0 residual ('0100')
+  const [saldoInicial, setSaldoInicial] = useState<number | ''>(activeGroup?.saldo_inicial ?? 100);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(activeGroup?.avatar_url || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -184,7 +185,7 @@ export default function TabGrupoSettings() {
       const payload: Record<string, any> = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
-        saldo_inicial: Number(saldoInicial) >= 0 ? Number(saldoInicial) : 100,
+        saldo_inicial: saldoInicial === '' ? (activeGroup?.saldo_inicial ?? 100) : Math.max(0, Math.min(10000, Number(saldoInicial))),
       };
       if (icono_url) {
         payload.icono_url = icono_url;
@@ -316,17 +317,14 @@ export default function TabGrupoSettings() {
             <label className="block text-[10px] font-bold uppercase tracking-wider text-dracula-gray mb-1">
               Saldo inicial para nuevos miembros
             </label>
-            <div className="relative">
-              <Coins size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-yellow" />
-              <input
-                type="number"
-                min={0}
-                max={10000}
-                value={saldoInicial}
-                onChange={(e) => setSaldoInicial(Math.max(0, Math.min(10000, parseInt(e.target.value, 10) || 0)))}
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2 pl-9 pr-3 text-sm text-dracula-light focus:outline-none focus:border-dracula-yellow transition-all"
-              />
-            </div>
+            <TokenAmountInput
+              min={0}
+              max={10000}
+              value={saldoInicial}
+              onChange={setSaldoInicial}
+              placeholder="100"
+              className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2 pl-9 pr-3 text-sm text-dracula-light focus:outline-none focus:border-dracula-yellow transition-all"
+            />
             <p className="text-[10px] text-dracula-gray mt-1">
               Cantidad de QuestCoins asignadas automáticamente a los futuros miembros que se unan al grupo.
             </p>

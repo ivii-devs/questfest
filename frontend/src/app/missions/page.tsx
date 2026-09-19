@@ -26,6 +26,7 @@ import MissionCard from '@/components/MissionCard';
 import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
 import GroupSwitcher from '@/components/groups/GroupSwitcher';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export interface MissionItem {
   id: number | string;
@@ -459,12 +460,12 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
 function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [reward, setReward] = useState('');
+  const [reward, setReward] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!title || !description || !reward) {
-      toast.error("Rellena todos los campos");
+    if (!title || !description || reward === '' || Number(reward) <= 0) {
+      toast.error("Rellena todos los campos correctamente");
       return;
     }
     if (title.length < 5) {
@@ -481,7 +482,7 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
       await api.post('/api/misiones/suggest', {
         title,
         description,
-        reward: parseInt(reward, 10),
+        reward: Number(reward),
         group_id: groupId || undefined
       });
       toast.success('Sugerencia enviada. El resto de jugadores podrá votarla en la pestaña de Propuestas.');
@@ -541,18 +542,16 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
 
           <div className="flex flex-col gap-1.5">
             <label htmlFor="suggest-mission-reward" className="text-[10px] font-bold uppercase text-dracula-gray">Recompensa sugerida (Tokens) *</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2">💰</span>
-              <input
-                id="suggest-mission-reward"
-                name="missionReward"
-                type="number"
-                value={reward}
-                onChange={(e) => setReward(e.target.value)}
-                className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-yellow focus:outline-none focus:border-dracula-yellow"
-                placeholder="1000"
-              />
-            </div>
+            <TokenAmountInput
+              id="suggest-mission-reward"
+              name="missionReward"
+              min={1}
+              value={reward}
+              onChange={setReward}
+              placeholder="1000"
+              icon="💰"
+              className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-yellow focus:outline-none focus:border-dracula-yellow"
+            />
           </div>
         </div>
 

@@ -30,6 +30,7 @@ import PullToRefresh from '@/components/PullToRefresh';
 import DuelCard from '@/components/DuelCard';
 import { useGroup } from '@/context/GroupContext';
 import GroupSwitcher from '@/components/groups/GroupSwitcher';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export interface DuelItem {
   id: number;
@@ -445,7 +446,9 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
 function CreateDuelModal({ users, onClose, onSuccess, groupId }: CreateDuelModalProps) {
   const [challenged, setChallenged] = useState('');
   const [game, setGame] = useState('');
-  const [wager, setWager] = useState<number | ''>(100);
+  // Inicializamos el valor en blanco con placeholder sugerido ('100'),
+  // permitiendo edición fluida y auto-selección táctil PWA
+  const [wager, setWager] = useState<number | ''>('');
 
   const handleSubmit = async () => {
     if (!challenged || !game || wager === '' || wager <= 0) {
@@ -522,22 +525,16 @@ function CreateDuelModal({ users, onClose, onSuccess, groupId }: CreateDuelModal
             <label htmlFor="duel-wager-amount" className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest">
               Tokens en juego
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                💰
-              </span>
-              <input
-                id="duel-wager-amount"
-                name="duelWager"
-                type="number"
-                className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
-                placeholder="200"
-                value={wager}
-                onChange={(e) =>
-                  setWager(e.target.value === '' ? '' : Number(e.target.value))
-                }
-              />
-            </div>
+            <TokenAmountInput
+              id="duel-wager-amount"
+              name="duelWager"
+              min={1}
+              value={wager}
+              onChange={setWager}
+              placeholder="100"
+              icon="💰"
+              className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
+            />
           </div>
         </div>
 

@@ -29,6 +29,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useGroup } from '@/context/GroupContext';
 import BetCard from '@/components/BetCard';
 import GroupSwitcher from '@/components/groups/GroupSwitcher';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export interface BetOption {
   id: string;
@@ -474,20 +475,16 @@ function PlaceBetModal({
             <label htmlFor="bet-investment-amount" className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest">
               Inversión (Tokens)
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2">
-                💰
-              </span>
-              <input
-                id="bet-investment-amount"
-                name="betAmount"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-sm font-bold text-dracula-yellow border border-dracula-gray/20 focus:outline-none focus:border-dracula-yellow"
-                placeholder="Cantidad a arriesgar..."
-              />
-            </div>
+            <TokenAmountInput
+              id="bet-investment-amount"
+              name="betAmount"
+              min={1}
+              value={amount}
+              onChange={setAmount}
+              placeholder="Cantidad a arriesgar..."
+              icon="💰"
+              className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-sm font-bold text-dracula-yellow border border-dracula-gray/20 focus:outline-none focus:border-dracula-yellow"
+            />
           </div>
         </div>
 
@@ -665,6 +662,7 @@ function SuggestBetModal({ onClose, onSuccess, groupId }: SuggestBetModalProps) 
                     type="number"
                     step="0.01"
                     value={opt.multiplier}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) =>
                       updateOption(index, 'multiplier', e.target.value)
                     }

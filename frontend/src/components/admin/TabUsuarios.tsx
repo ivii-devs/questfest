@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Users, DollarSign, ArrowUpRight, ArrowDownRight, History, X } from 'lucide-react';
+import TokenAmountInput from '@/components/ui/TokenAmountInput';
 
 export default function TabUsuarios() {
   const [stats, setStats] = useState({ total_users: 0, total_tokens: 0 });
@@ -152,12 +153,15 @@ export default function TabUsuarios() {
             <div className="flex flex-col gap-4 mb-6">
               <div>
                 <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest mb-1 px-1">Cantidad de Tokens</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    <DollarSign className="text-dracula-gray" size={16} />
-                  </div>
-                  <input type="number" min="1" value={modalAmount} onChange={e => setModalAmount(e.target.value ? Number(e.target.value) : '')} placeholder="0" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl py-3 pl-10 pr-3 text-sm text-dracula-light outline-none focus:border-dracula-purple transition-colors appearance-none" />
-                </div>
+                <TokenAmountInput
+                  min={1}
+                  value={modalAmount}
+                  onChange={setModalAmount}
+                  placeholder="0"
+                  icon={DollarSign}
+                  iconColor="text-dracula-gray"
+                  className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl py-3 pl-10 pr-3 text-sm text-dracula-light outline-none focus:border-dracula-purple transition-colors appearance-none"
+                />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest mb-1 px-1">Concepto / Motivo</label>
