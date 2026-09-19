@@ -7,6 +7,7 @@ class GroupCreate(BaseModel):
     descripcion: Optional[str] = Field(None, max_length=500, description="Descripción o temática del grupo")
     icono_url: Optional[str] = Field(None, description="URL de la foto o icono del grupo")
     password: Optional[str] = Field(None, min_length=3, max_length=50, description="Contraseña opcional de acceso")
+    saldo_inicial: int = Field(default=100, ge=0, le=10000, description="Saldo inicial de QuestCoins para nuevos miembros")
 
 class GroupResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -35,6 +36,7 @@ class UserGroupCardResponse(BaseModel):
     ranking_posicion: int
     miembros_totales: int
     requiere_password: bool = False
+    saldo_inicial: Optional[int] = 100
 
 class GroupJoinRequest(BaseModel):
     """
@@ -87,3 +89,4 @@ class GroupUpdateRequest(BaseModel):
     descripcion: Optional[str] = Field(None, max_length=500, description="Descripción o temática del grupo")
     icono_url: Optional[str] = Field(None, description="URL de la foto o icono del grupo")
     password: Optional[str] = Field(None, min_length=3, max_length=50, description="Contraseña opcional de acceso")
+    saldo_inicial: Optional[int] = Field(None, ge=0, le=10000, description="Saldo inicial de QuestCoins para nuevos miembros")

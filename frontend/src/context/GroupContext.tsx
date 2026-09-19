@@ -34,13 +34,14 @@ export interface GroupMembership {
   ranking_posicion?: number;
   miembros_totales?: number;
   requiere_password?: boolean;
+  saldo_inicial?: number;
 }
 
 interface GroupContextType {
   groups: GroupMembership[];
   activeGroup: GroupMembership | null;
   loading: boolean;
-  refreshGroups: () => Promise<void>;
+  refreshGroups: (targetActiveGroupId?: number) => Promise<void>;
   setActiveGroupById: (id: number) => void;
   leaveGroup: (id: number) => Promise<void>;
   updateActiveGroupBalance: (delta: number) => void;
@@ -61,8 +62,12 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
    * Sincronización con AuthContext:
    * Si la sesión aún se está verificando ('authLoading' es true), mantenemos 'loading'
    * en true para prevenir condiciones de carrera y redirecciones prematuras a /groups.
+   * 
+   * Prioridad de Selección:
+   * Si se provee 'targetActiveGroupId' (ej. creación o unión inmediata a un grupo),
+   * tiene prioridad absoluta sobre la clave persistida en localStorage.
    */
-  const refreshGroups = useCallback(async () => {
+  const refreshGroups = useCallback(async (targetActiveGroupId?: number) => {
     if (authLoading) {
       setLoading(true);
       return;
@@ -84,9 +89,10 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
       // Determinamos cuál debe ser el grupo activo
       if (fetchedGroups.length > 0) {
         const storedGroupIdStr = localStorage.getItem('active_group_id');
-        const storedGroupId = storedGroupIdStr ? parseInt(storedGroupIdStr, 10) : null;
+        const fallbackId = storedGroupIdStr ? parseInt(storedGroupIdStr, 10) : null;
+        const preferredId = targetActiveGroupId !== undefined ? targetActiveGroupId : fallbackId;
         
-        const matched = storedGroupId ? fetchedGroups.find(g => g.id === storedGroupId) : null;
+        const matched = preferredId ? fetchedGroups.find(g => g.id === preferredId) : null;
         const currentToSet = matched || fetchedGroups[0];
         
         setActiveGroup(currentToSet);
@@ -105,13 +111,17 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
   /**
    * Permite al usuario cambiar de grupo activo de forma instantánea.
    * Guarda la preferencia en el almacenamiento local para persistir la selección entre recargas.
+   * Emplea una actualización funcional de estado para blindar la búsqueda frente a cierres o renders pendientes.
    */
   const setActiveGroupById = (id: number) => {
-    const target = groups.find(g => g.id === id);
-    if (target) {
-      setActiveGroup(target);
-      localStorage.setItem('active_group_id', target.id.toString());
-    }
+    localStorage.setItem('active_group_id', id.toString());
+    setGroups(prevGroups => {
+      const target = prevGroups.find(g => g.id === id);
+      if (target) {
+        setActiveGroup(target);
+      }
+      return prevGroups;
+    });
   };
 
   /**

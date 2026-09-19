@@ -47,11 +47,9 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
         password: password.trim() || undefined,
       });
 
-      toast.success(res.data?.message || '¡Te has unido con éxito!');
-      await refreshGroups();
-      if (res.data?.grupo?.id) {
-        setActiveGroupById(res.data.grupo.id);
-      }
+      // Recargar grupos en el contexto y seleccionar el nuevo de forma atómica
+      const newGroupId = res.data?.id || res.data?.grupo?.id;
+      await refreshGroups(newGroupId);
       router.push('/feed');
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };

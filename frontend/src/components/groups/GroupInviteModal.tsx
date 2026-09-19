@@ -102,8 +102,8 @@ export default function GroupInviteModal({ isOpen, onClose, groupId, groupName }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 -bottom-12 min-h-[100lvh] h-[100lvh] w-full z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pb-safe-bottom animate-fade-in">
+      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Cabecera del Modal */}
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-dracula-gray/20">
           <div className="flex items-center gap-2">

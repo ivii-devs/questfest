@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { X, Users, Lock, Camera, Sparkles } from 'lucide-react';
+import { X, Users, Lock, Camera, Sparkles, Coins } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
@@ -25,6 +25,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
 
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [saldoInicial, setSaldoInicial] = useState<number>(100);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,16 +98,14 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
         icono_url: icono_url,
         avatar_url: icono_url,
         password: hasPassword ? password.trim() : undefined,
+        saldo_inicial: Number(saldoInicial) >= 0 ? Number(saldoInicial) : 100,
       };
 
       const res = await api.post('/api/groups/', payload);
       toast.success('¡Grupo creado exitosamente!');
       
-      // Actualizamos la lista de grupos y establecemos el nuevo grupo como activo
-      await refreshGroups();
-      if (res.data?.id) {
-        setActiveGroupById(res.data.id);
-      }
+      // Actualizamos la lista de grupos y establecemos el nuevo grupo como activo de forma atómica
+      await refreshGroups(res.data?.id);
 
       removeSelectedImage();
       onClose();
@@ -127,8 +126,8 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden">
+    <div className="fixed inset-0 -bottom-12 min-h-[100lvh] h-[100lvh] w-full z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pb-safe-bottom animate-fade-in">
+      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto">
         {/* Cabecera del Modal */}
         <div className="flex justify-between items-center mb-5 pb-3 border-b border-dracula-gray/20">
           <div className="flex items-center gap-2 text-dracula-purple">
@@ -148,7 +147,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
           {/* Nombre del Grupo */}
           <div>
             <label htmlFor="create-group-name" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
-              Nombre de la Comunidad *
+              Nombre del Grupo *
             </label>
             <div className="relative">
               <Users size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
@@ -184,7 +183,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
           {/* Selector de Foto / Logo desde la Galería */}
           <div>
             <label className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1.5">
-              Logo o Foto del Grupo (Galería)
+              Foto del Grupo
             </label>
             <input
               type="file"
@@ -225,9 +224,33 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
                 className="w-full flex items-center justify-center gap-2.5 p-3.5 bg-dracula-base border border-dashed border-dracula-gray/40 hover:border-dracula-purple/60 rounded-xl text-xs font-bold text-dracula-gray hover:text-dracula-light transition-all group btn-press"
               >
                 <Camera size={18} className="text-dracula-purple group-hover:scale-110 transition-transform" />
-                <span>Seleccionar foto desde la galería del dispositivo</span>
+                <span>Seleccionar foto del grupo</span>
               </button>
             )}
+          </div>
+
+          {/* Saldo Inicial de QuestCoins */}
+          <div>
+            <label htmlFor="create-group-balance" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+              Saldo inicial de QuestCoins
+            </label>
+            <div className="relative">
+              <Coins size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-yellow" />
+              <input
+                id="create-group-balance"
+                name="groupBalance"
+                type="number"
+                min={0}
+                max={10000}
+                value={saldoInicial}
+                onChange={(e) => setSaldoInicial(Math.max(0, Math.min(10000, parseInt(e.target.value, 10) || 0)))}
+                placeholder="100"
+                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
+              />
+            </div>
+            <p className="text-[10px] text-dracula-gray mt-1">
+              Fondo inicial que recibirás tú y cada nuevo participante al unirse al grupo.
+            </p>
           </div>
 
           {/* Toggle de Contraseña de Acceso */}
@@ -241,7 +264,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
               />
               <span className="text-xs font-bold text-dracula-light flex items-center gap-1.5">
                 <Lock size={14} className="text-dracula-yellow" />
-                Proteger con contraseña de entrada
+                Proteger con contraseña
               </span>
             </label>
 

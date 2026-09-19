@@ -1,6 +1,8 @@
 import pytest
 from fastapi import HTTPException
-from app.models.usuario import Usuario
+from pydantic import ValidationError
+from sqlalchemy import select
+from app.models.usuario import Usuario, LedgerTransaccion
 from app.schemas.grupo_schemas import GroupCreate, GroupUpdateRequest, GroupJoinRequest
 from app.crud import grupo_crud
 from app.crud.ledger_crud import move_tokens
@@ -277,6 +279,138 @@ async def test_join_group_with_codigo_invitacion_and_duplicate_error(db_session)
         )
     assert exc_dup.value.status_code == 400
     assert "Ya eres miembro de este grupo" in exc_dup.value.detail
+
+@pytest.mark.asyncio
+async def test_create_group_with_custom_saldo_inicial_and_ledger(db_session):
+    """
+    Verifica que al crear un grupo con un saldo inicial personalizado:
+    1. El grupo persiste el saldo_inicial configurado.
+    2. El administrador fundador recibe ese saldo exacto en su membresía.
+    3. Se genera un asiento contable auditable en LedgerTransaccion con snapshot del saldo.
+    """
+    founder = Usuario(username="fundador_rico", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add(founder)
+    await db_session.commit()
+
+    group_in = GroupCreate(nombre="Peña 500 Coins", saldo_inicial=500)
+    group = await grupo_crud.create_group(db_session, founder.id, group_in)
+
+    assert group.saldo_inicial == 500
+
+    # Membresía del fundador
+    founder_groups = await grupo_crud.get_user_groups(db_session, founder.id)
+    assert len(founder_groups) == 1
+    assert founder_groups[0].saldo_grupo == 500
+    assert founder_groups[0].saldo_inicial == 500
+
+    # Comprobar asiento en LedgerTransaccion
+    tx = await db_session.scalar(
+        select(LedgerTransaccion).where(
+            LedgerTransaccion.usuario_id == founder.id,
+            LedgerTransaccion.grupo_id == group.id
+        )
+    )
+    assert tx is not None
+    assert tx.cantidad == 500
+    assert tx.saldo_resultante == 500
+    assert "fundar el grupo Peña 500 Coins" in tx.concepto
+
+@pytest.mark.asyncio
+async def test_saldo_inicial_validation_bounds():
+    """
+    Garantiza que Pydantic rechaza valores negativos (< 0) y superiores al límite seguro (> 10000).
+    """
+    # 1. Saldo inicial negativo
+    with pytest.raises(ValidationError):
+        GroupCreate(nombre="Invalido Negativo", saldo_inicial=-10)
+
+    # 2. Saldo inicial astronómico
+    with pytest.raises(ValidationError):
+        GroupCreate(nombre="Invalido Excesivo", saldo_inicial=10001)
+
+    # 3. Saldo inicial válido en los límites
+    valid_zero = GroupCreate(nombre="Comunidad Cero", saldo_inicial=0)
+    assert valid_zero.saldo_inicial == 0
+
+    valid_max = GroupCreate(nombre="Comunidad Max", saldo_inicial=10000)
+    assert valid_max.saldo_inicial == 10000
+
+@pytest.mark.asyncio
+async def test_join_group_welcome_ledger_and_rejoin_exploit_mitigation(db_session):
+    """
+    Prueba integral de seguridad:
+    1. Un miembro se une y recibe el saldo_inicial (300) con apunte en Ledger.
+    2. El miembro gasta o pierde tokens y abandona voluntariamente el grupo.
+    3. El miembro vuelve a unirse con el mismo código de invitación.
+    4. MITIGACIÓN DE EXPLOIT: Al ser reingreso, el sistema detecta su bono previo y le asigna 0 tokens,
+       evitando el farmeo infinito de QuestCoins.
+    """
+    admin = Usuario(username="admin_fiesta_300", password_hash="hash", rol="player", saldo_actual=0)
+    user = Usuario(username="jugador_astuto", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([admin, user])
+    await db_session.commit()
+
+    group_in = GroupCreate(nombre="Evento 300 Coins", saldo_inicial=300)
+    group = await grupo_crud.create_group(db_session, admin.id, group_in)
+
+    # Paso 1: Jugador se une por primera vez
+    await grupo_crud.join_group(db_session, user.id, group.codigo_unico)
+    user_groups = await grupo_crud.get_user_groups(db_session, user.id)
+    assert user_groups[0].saldo_grupo == 300
+
+    # Verificar que existe su transacción inicial en el Ledger
+    tx_first = await db_session.scalar(
+        select(LedgerTransaccion).where(
+            LedgerTransaccion.usuario_id == user.id,
+            LedgerTransaccion.grupo_id == group.id
+        )
+    )
+    assert tx_first is not None
+    assert tx_first.cantidad == 300
+
+    # Paso 2: Abandona el grupo
+    await grupo_crud.leave_group(db_session, user.id, group.id)
+    user_groups_after_leave = await grupo_crud.get_user_groups(db_session, user.id)
+    assert len(user_groups_after_leave) == 0
+
+    # Paso 3: Vuelve a unirse mediante el código de invitación (intento de exploit)
+    await grupo_crud.join_group(db_session, user.id, group.codigo_unico)
+    user_groups_rejoined = await grupo_crud.get_user_groups(db_session, user.id)
+    assert len(user_groups_rejoined) == 1
+    # Debe tener 0 tokens, NO 300 nuevamente
+    assert user_groups_rejoined[0].saldo_grupo == 0
+
+@pytest.mark.asyncio
+async def test_update_group_saldo_inicial_setting(db_session):
+    """
+    Verifica que el administrador puede modificar el saldo_inicial en ajustes del grupo,
+    y que este cambio aplica a los futuros miembros sin alterar a los ya existentes.
+    """
+    admin = Usuario(username="admin_modificador", password_hash="hash", rol="player", saldo_actual=0)
+    existing_member = Usuario(username="miembro_viejo", password_hash="hash", rol="player", saldo_actual=0)
+    new_member = Usuario(username="miembro_nuevo", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([admin, existing_member, new_member])
+    await db_session.commit()
+
+    # 1. Grupo creado con 100 de saldo inicial
+    group_in = GroupCreate(nombre="Peña Evolutiva", saldo_inicial=100)
+    group = await grupo_crud.create_group(db_session, admin.id, group_in)
+    await grupo_crud.join_group(db_session, existing_member.id, group.codigo_unico)
+
+    # 2. Admin actualiza saldo_inicial a 250
+    update_req = GroupUpdateRequest(saldo_inicial=250)
+    updated_group = await grupo_crud.update_group_settings(db_session, admin.id, group.id, update_req)
+    assert updated_group.saldo_inicial == 250
+
+    # 3. El miembro existente preserva su saldo previo (100)
+    old_member_groups = await grupo_crud.get_user_groups(db_session, existing_member.id)
+    assert old_member_groups[0].saldo_grupo == 100
+
+    # 4. El nuevo miembro que se une después recibe el nuevo saldo (250)
+    await grupo_crud.join_group(db_session, new_member.id, group.codigo_unico)
+    new_member_groups = await grupo_crud.get_user_groups(db_session, new_member.id)
+    assert new_member_groups[0].saldo_grupo == 250
+
 
 
 

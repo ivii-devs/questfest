@@ -5,7 +5,7 @@ from sqlalchemy import func
 from fastapi import HTTPException, status
 
 from app.models.grupo import Grupo, MiembroGrupo
-from app.models.usuario import Usuario
+from app.models.usuario import Usuario, LedgerTransaccion
 from app.schemas.grupo_schemas import (
     GroupCreate,
     UserGroupCardResponse,
@@ -51,12 +51,15 @@ async def generate_unique_group_code(db: AsyncSession) -> str:
 async def create_group(db: AsyncSession, creator_id: int, data: GroupCreate) -> Grupo:
     """
     Funda un nuevo grupo independiente, nombra al creador como Administrador
-    e inicializa su saldo local de QuestCoins (por defecto 100 tokens).
+    e inicializa su saldo local de QuestCoins de forma auditable en el Ledger.
     """
     codigo = await generate_unique_group_code(db)
     
     requiere_pass = bool(data.password and data.password.strip())
     pass_hash = get_password_hash(data.password.strip()) if requiere_pass else None
+
+    # Saldo inicial configurable (por defecto 100 QuestCoins, validado en esquema entre 0 y 10.000)
+    saldo_inicial_definido = data.saldo_inicial if data.saldo_inicial is not None else 100
 
     grupo = Grupo(
         codigo_unico=codigo,
@@ -65,7 +68,7 @@ async def create_group(db: AsyncSession, creator_id: int, data: GroupCreate) -> 
         icono_url=data.icono_url,
         requiere_password=requiere_pass,
         password_hash=pass_hash,
-        saldo_inicial=100,
+        saldo_inicial=saldo_inicial_definido,
         creador_id=creator_id
     )
     db.add(grupo)
@@ -79,6 +82,17 @@ async def create_group(db: AsyncSession, creator_id: int, data: GroupCreate) -> 
         saldo_grupo=grupo.saldo_inicial
     )
     db.add(miembro_admin)
+
+    # Asiento contable de bienvenida en el Ledger para el fundador del evento
+    if grupo.saldo_inicial > 0:
+        transaccion_admin = LedgerTransaccion(
+            usuario_id=creator_id,
+            grupo_id=grupo.id,
+            cantidad=grupo.saldo_inicial,
+            concepto=f"Saldo inicial de bienvenida al fundar el grupo {grupo.nombre}",
+            saldo_resultante=grupo.saldo_inicial
+        )
+        db.add(transaccion_admin)
 
     await db.commit()
     await db.refresh(grupo)
@@ -126,7 +140,8 @@ async def get_user_groups(db: AsyncSession, user_id: int) -> list[UserGroupCardR
             saldo_grupo=miembro.saldo_grupo,
             ranking_posicion=ranking_pos,
             miembros_totales=total_members or 1,
-            requiere_password=grupo.requiere_password
+            requiere_password=grupo.requiere_password,
+            saldo_inicial=grupo.saldo_inicial
         ))
 
     return cards
@@ -158,14 +173,39 @@ async def join_group(db: AsyncSession, user_id: int, code: str, password: str | 
                 detail="Contraseña de grupo incorrecta o no suministrada."
             )
 
-    # Añadir membresía con saldo inicial
+    # Mitigación de exploit 'Abandono y Reingreso' (Infinite Money Glitch):
+    # Comprobamos en el Ledger si el usuario ya recibió el bono de bienvenida en esta comunidad.
+    # Si ya fue miembro en el pasado y cobró sus tokens iniciales, al reingresar inicia con 0 QuestCoins,
+    # impidiendo duplicar fondos abandonando y uniéndose de forma repetida.
+    historial_bienvenida = await db.scalar(
+        select(LedgerTransaccion.id).where(
+            LedgerTransaccion.usuario_id == user_id,
+            LedgerTransaccion.grupo_id == grupo.id,
+            LedgerTransaccion.concepto.ilike("%Saldo inicial de bienvenida%")
+        )
+    )
+    saldo_a_otorgar = 0 if historial_bienvenida else grupo.saldo_inicial
+
+    # Añadir membresía con saldo asignado
     nuevo_miembro = MiembroGrupo(
         grupo_id=grupo.id,
         usuario_id=user_id,
         rol="member",
-        saldo_grupo=grupo.saldo_inicial
+        saldo_grupo=saldo_a_otorgar
     )
     db.add(nuevo_miembro)
+
+    # Asiento contable de bienvenida en el Ledger si se le otorgan fichas iniciales
+    if saldo_a_otorgar > 0:
+        transaccion_bienvenida = LedgerTransaccion(
+            usuario_id=user_id,
+            grupo_id=grupo.id,
+            cantidad=saldo_a_otorgar,
+            concepto=f"Saldo inicial de bienvenida al unirte al grupo {grupo.nombre}",
+            saldo_resultante=saldo_a_otorgar
+        )
+        db.add(transaccion_bienvenida)
+
     await db.commit()
     await db.refresh(grupo)
     return grupo
@@ -376,6 +416,9 @@ async def update_group_settings(db: AsyncSession, admin_user_id: int, group_id: 
         else:
             grupo.requiere_password = False
             grupo.password_hash = None
+
+    if data.saldo_inicial is not None:
+        grupo.saldo_inicial = data.saldo_inicial
 
     await db.commit()
     await db.refresh(grupo)

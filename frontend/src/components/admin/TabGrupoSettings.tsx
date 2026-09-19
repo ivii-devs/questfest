@@ -12,7 +12,8 @@ import {
   Save,
   UserCheck,
   Camera,
-  X
+  X,
+  Coins
 } from 'lucide-react';
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
@@ -23,7 +24,7 @@ import { getApiErrorMessage } from '@/lib/errorHandler';
 /**
  * Pestaña de Ajustes del Grupo para el Panel de Administración.
  * Permite al administrador del grupo:
- * 1. Ver y actualizar los datos de la comunidad (nombre, descripción, contraseña).
+ * 1. Ver y actualizar los datos de la comunidad (nombre, descripción, foto, saldo inicial y contraseña).
  * 2. Visualizar y regenerar el código de invitación y QR exclusivo de administradores.
  * 3. Gestionar los roles de los miembros (delegar privilegios de admin o revocar a miembro).
  */
@@ -32,6 +33,7 @@ export default function TabGrupoSettings() {
 
   const [nombre, setNombre] = useState(activeGroup?.nombre || '');
   const [descripcion, setDescripcion] = useState(activeGroup?.descripcion || '');
+  const [saldoInicial, setSaldoInicial] = useState<number>(activeGroup?.saldo_inicial ?? 100);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(activeGroup?.avatar_url || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,11 +73,12 @@ export default function TabGrupoSettings() {
     if (activeGroup) {
       setNombre(activeGroup.nombre);
       setDescripcion(activeGroup.descripcion || '');
+      setSaldoInicial(activeGroup.saldo_inicial ?? 100);
       setImagePreview(activeGroup.avatar_url || null);
       setSelectedImage(null);
       fetchInviteAndMembers();
     }
-  }, [activeGroup?.id]);
+  }, [activeGroup?.id, activeGroup?.saldo_inicial]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -181,6 +184,7 @@ export default function TabGrupoSettings() {
       const payload: Record<string, any> = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
+        saldo_inicial: Number(saldoInicial) >= 0 ? Number(saldoInicial) : 100,
       };
       if (icono_url) {
         payload.icono_url = icono_url;
@@ -252,10 +256,10 @@ export default function TabGrupoSettings() {
             />
           </div>
 
-          {/* Logo o Foto del Grupo desde la Galería */}
+          {/* Foto del Grupo desde la Galería */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-dracula-gray mb-1.5">
-              Logo o Foto del Grupo (Galería)
+              Foto del Grupo
             </label>
             <input
               type="file"
@@ -302,9 +306,30 @@ export default function TabGrupoSettings() {
                 className="w-full flex items-center justify-center gap-2 p-3 bg-dracula-base border border-dashed border-dracula-gray/40 hover:border-dracula-purple/60 rounded-xl text-xs font-bold text-dracula-gray hover:text-dracula-light transition-all group"
               >
                 <Camera size={16} className="text-dracula-purple group-hover:scale-110 transition-transform" />
-                <span>Elegir foto del grupo desde el carrete o galería</span>
+                <span>Seleccionar foto del grupo</span>
               </button>
             )}
+          </div>
+
+          {/* Saldo Inicial para Nuevos Miembros */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-dracula-gray mb-1">
+              Saldo inicial para nuevos miembros
+            </label>
+            <div className="relative">
+              <Coins size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-yellow" />
+              <input
+                type="number"
+                min={0}
+                max={10000}
+                value={saldoInicial}
+                onChange={(e) => setSaldoInicial(Math.max(0, Math.min(10000, parseInt(e.target.value, 10) || 0)))}
+                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2 pl-9 pr-3 text-sm text-dracula-light focus:outline-none focus:border-dracula-yellow transition-all"
+              />
+            </div>
+            <p className="text-[10px] text-dracula-gray mt-1">
+              Cantidad de QuestCoins asignadas automáticamente a los futuros miembros que se unan al grupo.
+            </p>
           </div>
 
           <div className="pt-1">
@@ -317,7 +342,7 @@ export default function TabGrupoSettings() {
               />
               <span className="text-xs font-bold text-dracula-light flex items-center gap-1">
                 <Lock size={14} className="text-dracula-yellow" />
-                Actualizar contraseña de acceso
+                Proteger con contraseña
               </span>
             </label>
 
