@@ -26,7 +26,7 @@ import cloudinary.uploader
 
 from app.core.database import get_db
 from app.dependencies import get_admin_user
-from app.crud.admin_crud import calculate_summary_stats
+from app.services.boletin_service import calculate_summary_stats
 from app.models.usuario import Usuario, LedgerTransaccion
 from app.models.publicaciones import Publicacion
 from app.models.notificaciones import NotificacionAdmin

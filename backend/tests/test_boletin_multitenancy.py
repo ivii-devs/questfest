@@ -3,7 +3,7 @@ from app.models.usuario import Usuario, LedgerTransaccion
 from app.models.grupo import Grupo, MiembroGrupo
 from app.models.misiones import Mision, PruebaMision
 from app.models.juegos import Apuesta, TicketApuesta, Duelo
-from app.crud.admin_crud import calculate_summary_stats
+from app.services.boletin_service import calculate_summary_stats
 from app.api.routers.settings import get_boletin_config, update_boletin_config
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import date
 from pydantic import BaseModel
 
-from app.crud.admin_crud import calculate_summary_stats
+from app.services.boletin_service import calculate_summary_stats
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
