@@ -64,6 +64,23 @@ function WelcomeHubContent() {
   // Menú flotante de 3 puntos activo (ID del grupo)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
+  /**
+   * Accesibilidad de teclado: Cierra el menú contextual si el usuario presiona Escape.
+   * Evita que el panel quede bloqueado en pantalla cuando se interactúa con teclado físico.
+   */
+  useEffect(() => {
+    if (openMenuId === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenMenuId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openMenuId]);
+
   // Estado de notificaciones Push del dispositivo
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -297,6 +314,23 @@ function WelcomeHubContent() {
         {/* ======================================================== */}
         {activeTab === 'grupos' && (
           <div className="space-y-4">
+            {/*
+             * Backdrop global invisible a pantalla completa (z-30):
+             * Se renderiza fuera del árbol DOM de las tarjetas para que, al pulsar
+             * en cualquier espacio en blanco o fuera del panel, no propague la pseudo-clase CSS :active
+             * ni dispare animaciones de pulsación sobre las tarjetas.
+             */}
+            {openMenuId !== null && (
+              <div
+                className="fixed inset-0 z-30 cursor-default"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenuId(null);
+                }}
+                aria-hidden="true"
+              />
+            )}
+
             {/* Botones de Acción Superior */}
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -353,12 +387,15 @@ function WelcomeHubContent() {
                 groups.map((group) => {
                   const isCurrentActive = activeGroup?.id === group.id;
                   const isAdmin = group.rol === 'admin';
+                  const isMenuOpen = openMenuId === group.id;
 
                   return (
                     <div
                       key={group.id}
                       onClick={() => handleSelectGroup(group)}
-                      className={`w-full bg-dracula-card border rounded-2xl p-4 transition-all relative cursor-pointer btn-press active:scale-[0.98] ${
+                      className={`w-full bg-dracula-card border rounded-2xl p-4 transition-all relative cursor-pointer ${
+                        isMenuOpen ? '' : 'btn-press active:scale-[0.98]'
+                      } ${
                         isCurrentActive
                           ? 'border-dracula-purple shadow-[0_0_20px_rgba(189,147,249,0.2)] ring-1 ring-dracula-purple/50'
                           : 'border-dracula-gray/20 hover:border-dracula-gray/40'
@@ -430,9 +467,12 @@ function WelcomeHubContent() {
                         </div>
 
                         {/* Menú de 3 Puntos (...) */}
-                        <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <div
+                          className={`relative shrink-0 ${isMenuOpen ? 'z-40' : ''}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
-                            onClick={() => setOpenMenuId(openMenuId === group.id ? null : group.id)}
+                            onClick={() => setOpenMenuId(isMenuOpen ? null : group.id)}
                             className="p-2 text-dracula-gray hover:text-dracula-light hover:bg-dracula-base rounded-xl transition-colors"
                             aria-label="Opciones del grupo"
                           >
@@ -440,8 +480,8 @@ function WelcomeHubContent() {
                           </button>
 
                           {/* Dropdown flotante */}
-                          {openMenuId === group.id && (
-                            <div className="absolute right-0 top-10 z-30 w-48 bg-dracula-base border border-dracula-gray/30 rounded-xl shadow-2xl py-1.5 animate-scale-in">
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-10 z-40 w-48 bg-dracula-base border border-dracula-gray/30 rounded-xl shadow-2xl py-1.5 animate-scale-in">
                               <button
                                 onClick={() => {
                                   setOpenMenuId(null);
