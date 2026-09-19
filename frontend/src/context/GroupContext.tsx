@@ -35,6 +35,7 @@ export interface GroupMembership {
   miembros_totales?: number;
   requiere_password?: boolean;
   saldo_inicial?: number;
+  creador_id?: number | null;
 }
 
 interface GroupContextType {

@@ -141,7 +141,8 @@ async def get_user_groups(db: AsyncSession, user_id: int) -> list[UserGroupCardR
             ranking_posicion=ranking_pos,
             miembros_totales=total_members or 1,
             requiere_password=grupo.requiere_password,
-            saldo_inicial=grupo.saldo_inicial
+            saldo_inicial=grupo.saldo_inicial,
+            creador_id=grupo.creador_id
         ))
 
     return cards
@@ -279,7 +280,15 @@ async def get_group_invite_data(db: AsyncSession, user_id: int, group_id: int) -
 
 async def update_member_role(db: AsyncSession, admin_user_id: int, group_id: int, target_user_id: int, new_role: str) -> None:
     """
-    Permite a un administrador de grupo delegar o retirar permisos de administración a otro participante.
+    Permite al fundador del grupo delegar o retirar permisos de administración a los participantes.
+    
+    ¿Por qué estas reglas de negocio y restricciones estrictas?
+    1. Soberanía del Fundador: En comunidades autogestionadas, únicamente el creador original
+       (propietario del evento) puede decidir quién asciende a administrador y quién es revocado.
+       Esto previene motines o degradaciones cruzadas entre administradores secundarios.
+    2. Inmutabilidad del Creador: El fundador nunca puede perder su rol de administrador,
+       ni por acción propia (desasignación voluntaria accidental) ni por revocación de terceros.
+    3. Invariante de Administrador Activo: Ningún grupo puede quedarse sin administradores.
     """
     admin_member = await db.scalar(
         select(MiembroGrupo).where(
@@ -288,7 +297,22 @@ async def update_member_role(db: AsyncSession, admin_user_id: int, group_id: int
         )
     )
     if not admin_member or admin_member.rol != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado: requiere rol de administrador del grupo.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permiso denegado: requiere rol de administrador del grupo."
+        )
+
+    grupo = await db.scalar(select(Grupo).where(Grupo.id == group_id))
+    if not grupo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo no encontrado.")
+
+    # Soberanía Exclusiva del Fundador: Tanto la promoción como la revocación de roles
+    # están reservadas únicamente al creador original de la comunidad.
+    if admin_user_id != grupo.creador_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el creador del grupo tiene permisos para cambiar los roles de los miembros (ascender o revocar administradores)."
+        )
 
     target = await db.scalar(
         select(MiembroGrupo).where(
@@ -299,12 +323,40 @@ async def update_member_role(db: AsyncSession, admin_user_id: int, group_id: int
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="El usuario indicado no pertenece a este grupo.")
 
+    # Si no hay variación efectiva en el rol, no efectuamos escrituras redundantes
+    if target.rol == new_role:
+        return
+
+    # Si se intenta revocar privilegios de administrador a un participante
+    if target.rol == "admin" and new_role == "member":
+        # Inmutabilidad del Fundador: El creador nunca puede desasignarse ni ser degradado
+        if target_user_id == grupo.creador_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El creador del grupo no puede desasignarse ni ser revocado como administrador."
+            )
+
+        # Invariante de seguridad: Aseguramos que el grupo nunca quede sin al menos un administrador activo
+        remaining_admins = await db.scalar(
+            select(func.count(MiembroGrupo.id)).where(
+                MiembroGrupo.grupo_id == group_id,
+                MiembroGrupo.usuario_id != target_user_id,
+                MiembroGrupo.rol == "admin"
+            )
+        )
+        if (remaining_admins or 0) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El grupo nunca puede quedarse sin un administrador."
+            )
+
     target.rol = new_role
     await db.commit()
 
 async def get_group_members(db: AsyncSession, admin_user_id: int, group_id: int) -> list[GroupMemberResponse]:
     """
-    Recupera la lista detallada de miembros de un grupo con su rol y saldo local de QuestCoins.
+    Recupera la lista detallada de miembros de un grupo con su rol, saldo local de QuestCoins
+    e indicador de si es el fundador de la comunidad.
     Exclusivo para administradores del grupo para permitir la gestión de la comunidad.
     """
     admin_member = await db.scalar(
@@ -320,6 +372,8 @@ async def get_group_members(db: AsyncSession, admin_user_id: int, group_id: int)
             detail="Permiso denegado: solo los administradores del grupo pueden ver la lista completa de miembros."
         )
 
+    grupo = await db.scalar(select(Grupo).where(Grupo.id == group_id))
+
     stmt = (
         select(MiembroGrupo, Usuario)
         .join(Usuario, MiembroGrupo.usuario_id == Usuario.id)
@@ -330,6 +384,7 @@ async def get_group_members(db: AsyncSession, admin_user_id: int, group_id: int)
     records = result.all()
 
     members = []
+    creador_id = grupo.creador_id if grupo else None
     for miembro, usuario in records:
         members.append(GroupMemberResponse(
             usuario_id=usuario.id,
@@ -337,7 +392,8 @@ async def get_group_members(db: AsyncSession, admin_user_id: int, group_id: int)
             avatar_url=usuario.avatar_url,
             rol=miembro.rol,
             saldo_grupo=miembro.saldo_grupo,
-            fecha_union=miembro.fecha_union
+            fecha_union=miembro.fecha_union,
+            es_creador=(usuario.id == creador_id) if creador_id is not None else False
         ))
 
     return members

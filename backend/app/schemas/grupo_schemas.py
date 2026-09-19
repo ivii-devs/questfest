@@ -37,6 +37,7 @@ class UserGroupCardResponse(BaseModel):
     miembros_totales: int
     requiere_password: bool = False
     saldo_inicial: Optional[int] = 100
+    creador_id: Optional[int] = None
 
 class GroupJoinRequest(BaseModel):
     """
@@ -72,7 +73,20 @@ class GroupInviteResponse(BaseModel):
     qr_payload: str
 
 class UpdateMemberRoleRequest(BaseModel):
+    """
+    Esquema para modificar el rol de un participante dentro del grupo.
+    Admite tanto 'rol' como 'nuevo_rol' para compatibilidad total con peticiones del cliente.
+    """
     rol: str = Field(..., pattern="^(admin|member)$", description="Nuevo rol dentro del grupo")
+
+    @model_validator(mode="before")
+    @classmethod
+    def harmonize_rol(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            role_val = data.get("rol") or data.get("nuevo_rol")
+            if role_val:
+                data["rol"] = str(role_val).strip().lower()
+        return data
 
 class GroupMemberResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -83,6 +97,7 @@ class GroupMemberResponse(BaseModel):
     rol: str
     saldo_grupo: int
     fecha_union: Optional[datetime] = None
+    es_creador: bool = False
 
 class GroupUpdateRequest(BaseModel):
     nombre: Optional[str] = Field(None, min_length=2, max_length=100, description="Nombre visible del grupo")

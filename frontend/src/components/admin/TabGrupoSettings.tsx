@@ -12,14 +12,29 @@ import {
   Save,
   UserCheck,
   Camera,
-  X
+  X,
+  Crown
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { copyToClipboard } from '@/lib/clipboard';
 import { getApiErrorMessage } from '@/lib/errorHandler';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+
+/**
+ * Representa la información de un participante del grupo devuelto por la API.
+ */
+interface GroupMember {
+  usuario_id: number;
+  username: string;
+  avatar_url?: string | null;
+  rol: 'admin' | 'member';
+  saldo_grupo: number;
+  fecha_union?: string;
+  es_creador?: boolean;
+}
 
 /**
  * Pestaña de Ajustes del Grupo para el Panel de Administración.
@@ -29,7 +44,13 @@ import TokenAmountInput from '@/components/ui/TokenAmountInput';
  * 3. Gestionar los roles de los miembros (delegar privilegios de admin o revocar a miembro).
  */
 export default function TabGrupoSettings() {
+  const { user } = useAuth();
   const { activeGroup, refreshGroups } = useGroup();
+
+  // Soberanía del Fundador: Determina si el usuario logueado es el fundador/creador del grupo activo
+  const isCurrentUserCreator = Boolean(
+    user && activeGroup?.creador_id && user.id === activeGroup.creador_id
+  );
 
   const [nombre, setNombre] = useState(activeGroup?.nombre || '');
   const [descripcion, setDescripcion] = useState(activeGroup?.descripcion || '');
@@ -50,7 +71,7 @@ export default function TabGrupoSettings() {
   const [regenerating, setRegenerating] = useState(false);
 
   // Miembros
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   const fetchInviteAndMembers = async () => {
@@ -206,6 +227,12 @@ export default function TabGrupoSettings() {
   };
 
   const handleToggleMemberRole = async (memberUserId: number, currentRole: string) => {
+    // Soberanía del Fundador: Solo el creador del grupo tiene potestad para delegar o revocar roles
+    if (!isCurrentUserCreator) {
+      toast.error('Solo el creador del grupo tiene permisos para cambiar los roles de los miembros.');
+      return;
+    }
+
     const newRole = currentRole === 'admin' ? 'member' : 'admin';
     const actionText = newRole === 'admin' ? 'ascender a Administrador' : 'revertir a Miembro normal';
 
@@ -213,9 +240,10 @@ export default function TabGrupoSettings() {
 
     try {
       await api.patch(`/api/groups/${activeGroup.id}/members/${memberUserId}/role`, {
+        rol: newRole,
         nuevo_rol: newRole,
       });
-      toast.success(`Rol actualizado a: ${newRole}`);
+      toast.success(`Rol actualizado a: ${newRole === 'admin' ? 'Administrador' : 'Miembro'}`);
       await fetchInviteAndMembers();
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, 'No se pudo cambiar el rol'));
@@ -447,46 +475,90 @@ export default function TabGrupoSettings() {
           <div className="py-6 text-center text-xs text-dracula-gray">No hay participantes registrados.</div>
         ) : (
           <div className="space-y-2.5">
-            {members.map((m) => (
-              <div
-                key={m.usuario_id}
-                className="bg-dracula-base/70 border border-dracula-gray/20 rounded-xl p-3 flex items-center justify-between gap-3"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-dracula-purple to-[#ff79c6] flex items-center justify-center text-xs font-black text-dracula-base shrink-0">
-                    {m.username.charAt(0).toUpperCase()}
+            {members.map((m) => {
+              const isTargetCreator = Boolean(
+                m.es_creador || (activeGroup?.creador_id && m.usuario_id === activeGroup.creador_id)
+              );
+
+              return (
+                <div
+                  key={m.usuario_id}
+                  className="bg-dracula-base/70 border border-dracula-gray/20 rounded-xl p-3 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-dracula-purple to-[#ff79c6] flex items-center justify-center text-xs font-black text-dracula-base shrink-0">
+                      {m.username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-black text-dracula-light truncate block">
+                        @{m.username}
+                      </span>
+                      <span className="text-[10px] text-dracula-yellow font-bold">
+                        {m.saldo_grupo} QuestCoins
+                      </span>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <span className="text-xs font-black text-dracula-light truncate block">
-                      @{m.username}
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {/* Badge distintivo de Creador / Fundador */}
+                    {isTargetCreator && (
+                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm">
+                        <Crown size={11} className="text-amber-400" />
+                        <span>Creador</span>
+                      </span>
+                    )}
+
+                    {/* Badge de Rol actual */}
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        m.rol === 'admin'
+                          ? 'bg-dracula-purple/20 text-dracula-purple border border-dracula-purple/40'
+                          : 'bg-dracula-gray/10 text-dracula-gray'
+                      }`}
+                    >
+                      {m.rol}
                     </span>
-                    <span className="text-[10px] text-dracula-yellow font-bold">
-                      {m.saldo_grupo} QuestCoins
-                    </span>
+
+                    {/* Botón de Gestión de Rol (Soberanía Exclusiva del Fundador) */}
+                    {!isCurrentUserCreator ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="p-1.5 bg-dracula-card/40 border border-dracula-gray/20 text-dracula-gray/40 rounded-lg text-[10px] font-bold cursor-not-allowed"
+                        title="Solo el creador del grupo puede gestionar los roles de los miembros"
+                        aria-label="Solo el creador del grupo puede gestionar los roles de los miembros"
+                      >
+                        <Lock size={14} />
+                      </button>
+                    ) : isTargetCreator ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="p-1.5 bg-dracula-card/40 border border-dracula-gray/20 text-dracula-gray/40 rounded-lg text-[10px] font-bold cursor-not-allowed"
+                        title="El creador del grupo no puede ser desasignado como administrador"
+                        aria-label="El creador del grupo no puede ser desasignado como administrador"
+                      >
+                        <Lock size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMemberRole(m.usuario_id, m.rol)}
+                        className={`p-1.5 bg-dracula-card hover:bg-dracula-base border rounded-lg text-[10px] font-bold transition-colors ${
+                          m.rol === 'admin'
+                            ? 'border-dracula-red/30 text-dracula-red hover:text-dracula-red/80'
+                            : 'border-dracula-gray/30 text-dracula-gray hover:text-dracula-light'
+                        }`}
+                        title={m.rol === 'admin' ? 'Revocar rol de administrador' : 'Ascender a Administrador'}
+                        aria-label={m.rol === 'admin' ? 'Revocar rol de administrador' : 'Ascender a Administrador'}
+                      >
+                        <UserCheck size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <span
-                    className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      m.rol === 'admin'
-                        ? 'bg-dracula-purple/20 text-dracula-purple border border-dracula-purple/40'
-                        : 'bg-dracula-gray/10 text-dracula-gray'
-                    }`}
-                  >
-                    {m.rol}
-                  </span>
-
-                  <button
-                    onClick={() => handleToggleMemberRole(m.usuario_id, m.rol)}
-                    className="p-1.5 bg-dracula-card hover:bg-dracula-base border border-dracula-gray/30 text-dracula-gray hover:text-dracula-light rounded-lg text-[10px] font-bold transition-colors"
-                    title={m.rol === 'admin' ? 'Degradar a miembro' : 'Hacer administrador'}
-                  >
-                    <UserCheck size={14} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

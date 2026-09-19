@@ -411,6 +411,106 @@ async def test_update_group_saldo_inicial_setting(db_session):
     new_member_groups = await grupo_crud.get_user_groups(db_session, new_member.id)
     assert new_member_groups[0].saldo_grupo == 250
 
+@pytest.mark.asyncio
+async def test_founder_cannot_unassign_self_as_admin(db_session):
+    """
+    Regla 1: El creador y administrador del grupo nunca puede desasignarse
+    ni revocar su propio rol de administrador, impidiendo que el grupo quede acéfalo.
+    """
+    founder = Usuario(username="fundador_inmutable", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add(founder)
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Comunidad Fundador"))
+
+    # Intentar desasignarse a sí mismo como administrador debe arrojar HTTP 400
+    with pytest.raises(HTTPException) as exc_info:
+        await grupo_crud.update_member_role(
+            db=db_session,
+            admin_user_id=founder.id,
+            group_id=group.id,
+            target_user_id=founder.id,
+            new_role="member"
+        )
+    assert exc_info.value.status_code == 400
+    assert "creador del grupo no puede desasignarse" in exc_info.value.detail.lower()
+
+@pytest.mark.asyncio
+async def test_founder_exclusive_sovereignty_over_roles(db_session):
+    """
+    Regla 2: Únicamente el fundador del grupo tiene potestad para:
+    1. Ascender a miembros normales a administradores.
+    2. Revocar el rol de administrador a otros administradores.
+    Los administradores delegados (no fundadores) NO pueden ascender ni revocar a nadie.
+    """
+    founder = Usuario(username="fundador_soberano", password_hash="hash", rol="player", saldo_actual=0)
+    user_b = Usuario(username="admin_secundario", password_hash="hash", rol="player", saldo_actual=0)
+    user_c = Usuario(username="miembro_raso", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, user_b, user_c])
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Comunidad Jerárquica"))
+    await grupo_crud.join_group(db_session, user_b.id, group.codigo_unico)
+    await grupo_crud.join_group(db_session, user_c.id, group.codigo_unico)
+
+    # 1. El fundador asciende a user_b a administrador (Permitido)
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, user_b.id, "admin")
+
+    # 2. user_b (administrador delegado) intenta ascender a user_c (Denegado: 403 Forbidden)
+    with pytest.raises(HTTPException) as exc_promote:
+        await grupo_crud.update_member_role(db_session, user_b.id, group.id, user_c.id, "admin")
+    assert exc_promote.value.status_code == 403
+    assert "solo el creador" in exc_promote.value.detail.lower()
+
+    # 3. user_b intenta revocar al fundador (Denegado: 403 Forbidden)
+    with pytest.raises(HTTPException) as exc_demote_founder:
+        await grupo_crud.update_member_role(db_session, user_b.id, group.id, founder.id, "member")
+    assert exc_demote_founder.value.status_code == 403
+
+    # 4. El fundador asciende a user_c a administrador (Permitido)
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, user_c.id, "admin")
+
+    # 5. user_b intenta revocar a user_c (Denegado: 403 Forbidden)
+    with pytest.raises(HTTPException) as exc_cross_demote:
+        await grupo_crud.update_member_role(db_session, user_b.id, group.id, user_c.id, "member")
+    assert exc_cross_demote.value.status_code == 403
+
+    # 6. El fundador revoca a user_b y a user_c devolviéndolos a miembro (Permitido)
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, user_b.id, "member")
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, user_c.id, "member")
+
+    members = await grupo_crud.get_group_members(db_session, founder.id, group.id)
+    roles_by_id = {m.usuario_id: m.rol for m in members}
+    assert roles_by_id[founder.id] == "admin"
+    assert roles_by_id[user_b.id] == "member"
+    assert roles_by_id[user_c.id] == "member"
+
+@pytest.mark.asyncio
+async def test_group_responses_metadata_creator(db_session):
+    """
+    Verifica que las respuestas de miembros y tarjetas de grupo expongan correctamente
+    es_creador y creador_id para el frontend.
+    """
+    founder = Usuario(username="creador_verif", password_hash="hash", rol="player", saldo_actual=0)
+    member = Usuario(username="miembro_verif", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, member])
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Comunidad Metadata"))
+    await grupo_crud.join_group(db_session, member.id, group.codigo_unico)
+
+    # get_user_groups debe exponer creador_id
+    cards = await grupo_crud.get_user_groups(db_session, founder.id)
+    assert cards[0].creador_id == founder.id
+
+    # get_group_members debe marcar es_creador=True para el fundador y False para el miembro
+    members = await grupo_crud.get_group_members(db_session, founder.id, group.id)
+    founder_resp = next(m for m in members if m.usuario_id == founder.id)
+    member_resp = next(m for m in members if m.usuario_id == member.id)
+
+    assert founder_resp.es_creador is True
+    assert member_resp.es_creador is False
+
 
 
 
