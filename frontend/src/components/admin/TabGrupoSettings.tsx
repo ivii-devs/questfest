@@ -17,6 +17,7 @@ import {
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { copyToClipboard } from '@/lib/clipboard';
 
 /**
  * Pestaña de Ajustes del Grupo para el Panel de Administración.
@@ -114,18 +115,30 @@ export default function TabGrupoSettings() {
     ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(joinUrl)}&bgcolor=1e1f29&color=bd93f9&margin=10`
     : '';
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(inviteCode);
-    setCopiedCode(true);
-    toast.success('¡Código de invitación copiado!');
-    setTimeout(() => setCopiedCode(false), 2000);
+  // Copiamos el código de invitación con soporte de fallback universal para HTTP y WebKit
+  const handleCopyCode = async () => {
+    if (!inviteCode) return;
+    const ok = await copyToClipboard(inviteCode);
+    if (ok) {
+      setCopiedCode(true);
+      toast.success('¡Código de invitación copiado!');
+      setTimeout(() => setCopiedCode(false), 2000);
+    } else {
+      toast.error('No se pudo copiar el código automáticamente.');
+    }
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(joinUrl);
-    setCopiedLink(true);
-    toast.success('¡Enlace directo copiado!');
-    setTimeout(() => setCopiedLink(false), 2000);
+  // Copiamos el enlace directo con la misma tolerancia a fallos
+  const handleCopyLink = async () => {
+    if (!joinUrl) return;
+    const ok = await copyToClipboard(joinUrl);
+    if (ok) {
+      setCopiedLink(true);
+      toast.success('¡Enlace directo copiado!');
+      setTimeout(() => setCopiedLink(false), 2000);
+    } else {
+      toast.error('No se pudo copiar el enlace automáticamente.');
+    }
   };
 
   const handleRegenerate = async () => {

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, QrCode, RefreshCw, ShieldCheck, Share2 } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { copyToClipboard } from '@/lib/clipboard';
 
 interface GroupInviteModalProps {
   isOpen: boolean;
@@ -55,20 +56,31 @@ export default function GroupInviteModal({ isOpen, onClose, groupId, groupName }
     ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinUrl)}&bgcolor=1e1f29&color=bd93f9&margin=10`
     : '';
 
-  const handleCopyCode = () => {
+  // Copiamos el código empleando la utilidad con fallback para blindar la acción
+  // frente a conexiones HTTP en red local y restricciones del motor WebKit en iOS Safari
+  const handleCopyCode = async () => {
     if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode);
-    setCopiedCode(true);
-    toast.success('¡Código copiado al portapapeles!');
-    setTimeout(() => setCopiedCode(false), 2500);
+    const ok = await copyToClipboard(inviteCode);
+    if (ok) {
+      setCopiedCode(true);
+      toast.success('¡Código copiado al portapapeles!');
+      setTimeout(() => setCopiedCode(false), 2500);
+    } else {
+      toast.error('No se pudo copiar automáticamente. Por favor, selecciona y copia el código.');
+    }
   };
 
-  const handleCopyLink = () => {
+  // Copiamos el enlace directo garantizando la misma resiliencia ante cualquier navegador o contexto
+  const handleCopyLink = async () => {
     if (!joinUrl) return;
-    navigator.clipboard.writeText(joinUrl);
-    setCopiedLink(true);
-    toast.success('¡Enlace copiado al portapapeles!');
-    setTimeout(() => setCopiedLink(false), 2500);
+    const ok = await copyToClipboard(joinUrl);
+    if (ok) {
+      setCopiedLink(true);
+      toast.success('¡Enlace copiado al portapapeles!');
+      setTimeout(() => setCopiedLink(false), 2500);
+    } else {
+      toast.error('No se pudo copiar automáticamente. Por favor, copia el enlace del campo de texto.');
+    }
   };
 
   const handleRegenerateCode = async () => {
