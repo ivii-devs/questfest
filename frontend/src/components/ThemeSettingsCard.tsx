@@ -140,7 +140,7 @@ export default function ThemeSettingsCard() {
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
           <label className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider">
-            Colección Dinámica (Por Sección)
+            Colección Dinámica
           </label>
           <span className="text-[10px] text-dracula-purple font-semibold flex items-center gap-1">
             <Sparkles size={11} /> Identidad visual por panel
@@ -196,7 +196,7 @@ export default function ThemeSettingsCard() {
       {/* ======================================================== */}
       <div className="space-y-2.5 pt-1 border-t border-dracula-gray/15">
         <label className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider block">
-          Colección Monocromática (Acento Unificado)
+          Colección Monocromática
         </label>
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">

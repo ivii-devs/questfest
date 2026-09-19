@@ -356,9 +356,6 @@ function WelcomeHubContent() {
                 <span className="text-xs font-bold uppercase tracking-widest text-dracula-gray">
                   Tus Comunidades Activas
                 </span>
-                <span className="text-[11px] text-dracula-gray">
-                  Toca una tarjeta para ingresar
-                </span>
               </div>
 
               {loading ? (

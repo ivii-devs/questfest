@@ -93,7 +93,7 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-xs text-dracula-gray leading-relaxed">
-            Introduce el código alfanumérico proporcionado por el administrador de tu grupo para unirte a la competición.
+            Introduce el código proporcionado por el administrador de tu grupo para unirte.
           </p>
 
           {/* Código de Invitación */}
@@ -120,7 +120,7 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
           {/* Contraseña del Grupo si aplica */}
           <div>
             <label htmlFor="join-modal-password" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
-              Contraseña del Grupo (Si está protegido)
+              Contraseña del Grupo
             </label>
             <div className="relative">
               <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
@@ -131,7 +131,7 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Contraseña establecida por el creador"
+                placeholder="Dejar en blanco si no tiene"
                 className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-sm text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-cyan transition-all"
               />
             </div>

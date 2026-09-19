@@ -286,7 +286,7 @@ export default function TabGrupoSettings() {
                     onClick={() => fileInputRef.current?.click()}
                     className="text-[10px] text-dracula-purple font-bold hover:underline mt-0.5 block"
                   >
-                    Cambiar imagen de galería
+                    Cambiar foto del grupo
                   </button>
                 </div>
                 {selectedImage && (
@@ -368,14 +368,9 @@ export default function TabGrupoSettings() {
 
       {/* Sección 2: Invitaciones (Solo Administrador) */}
       <div className="bg-dracula-card border border-dracula-purple/30 rounded-2xl p-5 shadow-xl">
-        <div className="flex items-center justify-between pb-3 border-b border-dracula-gray/20 mb-4">
-          <div className="flex items-center gap-2 text-dracula-purple font-black text-sm uppercase tracking-wider">
-            <KeyRound size={18} />
-            <span>Credenciales de Invitación</span>
-          </div>
-          <span className="text-[9px] font-black uppercase text-dracula-purple bg-dracula-purple/20 px-2 py-0.5 rounded-full border border-dracula-purple/40">
-            Exclusivo Admin
-          </span>
+        <div className="flex items-center gap-2 pb-3 border-b border-dracula-gray/20 mb-4 text-dracula-purple font-black text-sm uppercase tracking-wider">
+          <KeyRound size={18} />
+          <span>Enlace de Invitación</span>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 bg-dracula-base/70 p-4 rounded-xl border border-dracula-gray/20 mb-4">

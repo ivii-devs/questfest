@@ -103,7 +103,7 @@ export default function AdminDashboard() {
             <ShieldAlert size={28} className="text-dracula-red animate-pulse" />
             <div>
               <h1 className="text-xl font-black text-dracula-red uppercase tracking-widest">
-                Modo Dios
+                Panel Admin
               </h1>
             </div>
           </div>

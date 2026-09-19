@@ -49,7 +49,7 @@ export default function TabSistema() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:outline-none focus:border-dracula-gray transition-colors resize-none h-32 mb-4"
-          placeholder="Escribe el anuncio para todo el pueblo..."
+          placeholder="Escribe el anuncio para todos los usuarios..."
         />
         
         {mediaUrl && (
