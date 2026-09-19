@@ -69,28 +69,14 @@ export default function DailySummaryModal({
 }: DailySummaryModalProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    if (forceOpen) return;
-    const currentHour = new Date().getHours();
-    const todayStr = new Date().toISOString().split('T')[0];
-    const storageKey = `summary_seen_${todayStr}`;
-
-    // Si pasaron las 12:00 y no se ha consumido en este dispositivo hoy
-    if (currentHour >= 12 && !localStorage.getItem(storageKey)) {
-      setIsOpen(true);
-    }
-  }, [forceOpen]);
-
   const handleClose = () => {
     if (onClosePreview) {
       return onClosePreview();
     }
-    const todayStr = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`summary_seen_${todayStr}`, 'true');
     setIsOpen(false);
   };
 
-  const isVisible = forceOpen || isOpen;
+  const isVisible = forceOpen ?? isOpen;
   if (!isVisible || !previewData) return null;
 
   return (

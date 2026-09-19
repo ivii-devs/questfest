@@ -17,7 +17,7 @@ lo que garantiza que ninguna ruta pueda ser invocada por un jugador raso.
 ================================================================================
 """
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
@@ -26,6 +26,7 @@ import cloudinary.uploader
 
 from app.core.database import get_db
 from app.dependencies import get_admin_user
+from app.crud.admin_crud import calculate_summary_stats
 from app.models.usuario import Usuario, LedgerTransaccion
 from app.models.publicaciones import Publicacion
 from app.models.notificaciones import NotificacionAdmin
@@ -283,85 +284,15 @@ async def create_roulette_mission(mision: RuletaMisionCreate, current_user: Usua
     return {"message": "Misión de ruleta añadida al bombo"}
 
 @router.get("/summary-stats", response_model=DailySummaryStatsResponse)
-async def get_summary_stats(db: AsyncSession = Depends(get_db)):
+async def get_summary_stats(
+    group_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Genera el resumen estadístico diario para el boletín matutino de la fiesta.
-    
-    Calcula de manera eficiente:
-    1. Líder supremo (jugador con más QuestCoins).
-    2. Farolillo rojo (jugador en bancarrota o con menor saldo positivo).
-    3. Jugador con más misiones completadas con éxito.
-    4. Jugador con mayor volumen de apuestas realizadas.
-    5. Mayor duelo celebrado.
-    6. Mayor ganador y mayor perdedor en las últimas 24 horas a través del Ledger.
+    Soporta filtrado contextual por 'group_id' para previsualizar las estadísticas del grupo activo.
     """
-    # 1. Primer puesto
-    top1 = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.desc()).limit(1))
-    
-    # 2. Último puesto (priorizando jugadores activos que aún tengan algo antes del 0 absoluto)
-    last = await db.scalar(select(Usuario).where(Usuario.saldo_actual > 0).order_by(Usuario.saldo_actual.asc()).limit(1))
-    if not last:
-        last = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.asc()).limit(1))
-        
-    # 3. Usuario con más misiones aprobadas
-    stmt_miss = select(PruebaMision.usuario_id, func.count(PruebaMision.id).label('c')).where(PruebaMision.estado == 'approved').group_by(PruebaMision.usuario_id).order_by(func.count(PruebaMision.id).desc()).limit(1)
-    res_miss = (await db.execute(stmt_miss)).first()
-    most_miss = None
-    if res_miss:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_miss[0]))
-        if u:
-            most_miss = StatUser(name=u.username, count=res_miss[1])
-        
-    # 4. Usuario con mayor volumen de apuestas realizadas
-    stmt_bets = select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label('c')).group_by(TicketApuesta.usuario_id).order_by(func.count(TicketApuesta.id).desc()).limit(1)
-    res_bets = (await db.execute(stmt_bets)).first()
-    most_bets = None
-    if res_bets:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_bets[0]))
-        if u:
-            most_bets = StatUser(name=u.username, count=res_bets[1])
-        
-    # 5. Duelo más importante resuelto por tokens en juego
-    duel = await db.scalar(select(Duelo).where(Duelo.estado == 'completed').order_by(Duelo.tokens_en_juego.desc()).limit(1))
-    duel_winner = None
-    if duel:
-        from sqlalchemy.orm import selectinload
-        d_full = await db.scalar(select(Duelo).options(selectinload(Duelo.retador), selectinload(Duelo.retado)).where(Duelo.id == duel.id))
-        if d_full and d_full.retador and d_full.retado:
-            duel_winner = DuelStat(name=d_full.retador.username, opponent=d_full.retado.username)
-        
-    # 6. Mayor ganador y perdedor neto en las últimas 24 horas a través de la contabilidad
-    from datetime import datetime, timedelta, timezone
-    ayer = datetime.now(timezone.utc) - timedelta(hours=24)
-    
-    # Mayor incremento acumulado
-    stmt_win = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad > 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).desc()).limit(1)
-    res_win = (await db.execute(stmt_win)).first()
-    biggest_winner = None
-    if res_win:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_win[0]))
-        if u:
-            biggest_winner = StatUser(name=u.username, amount=f"+{res_win[1]}")
-        
-    # Mayor decremento acumulado
-    stmt_lose = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad < 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).asc()).limit(1)
-    res_lose = (await db.execute(stmt_lose)).first()
-    biggest_loser = None
-    if res_lose:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_lose[0]))
-        if u:
-            biggest_loser = StatUser(name=u.username, amount=str(res_lose[1]))
-
-    return DailySummaryStatsResponse(
-        phase="Noche 1",
-        firstPlace=StatUser(name=top1.username, points=top1.saldo_actual) if top1 else None,
-        lastPlace=StatUser(name=last.username, points=last.saldo_actual) if last else None,
-        mostBetsWon=most_bets,
-        mostMissions=most_miss,
-        duelWinner=duel_winner,
-        biggestWinner=biggest_winner,
-        biggestLoser=biggest_loser
-    )
+    return await calculate_summary_stats(db=db, group_id=group_id)
 
 # --------------------------------------------------------------------------
 # 5. GESTIÓN Y RESOLUCIÓN DE APUESTAS

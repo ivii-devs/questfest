@@ -14,9 +14,10 @@ Ajustes administrados:
 """
 
 import json
-from fastapi import APIRouter, Depends, HTTPException, Body
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
@@ -60,18 +61,16 @@ async def update_rules(
     return ReglasResponse(reglas=config.valor)
 
 @router.get("/boletin")
-async def get_boletin_config(db: AsyncSession = Depends(get_db)):
+async def get_boletin_config(
+    group_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Recupera la configuración de visibilidad del boletín diario matutino.
-    Si falla la decodificación JSON o no existe el registro, retorna los valores por defecto.
+    Si se especifica group_id, busca la configuración específica de ese grupo ('boletin_config_group_{group_id}').
+    Si no existe o falla, recurre a la clave global ('boletin_config') o a los valores por defecto.
     """
-    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "boletin_config"))
-    if config and config.valor:
-        try:
-            return json.loads(config.valor)
-        except Exception:
-            pass
-    return {
+    default_config = {
         "hora": "12:00",
         "phaseValue": "Noche 1",
         "phase": True,
@@ -84,26 +83,71 @@ async def get_boletin_config(db: AsyncSession = Depends(get_db)):
         "biggestLoser": True
     }
 
+    if group_id is not None:
+        group_config = await db.scalar(
+            select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == f"boletin_config_group_{group_id}")
+        )
+        if group_config and group_config.valor:
+            try:
+                parsed = json.loads(group_config.valor)
+                return {**default_config, **parsed}
+            except Exception:
+                pass
+
+    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "boletin_config"))
+    if config and config.valor:
+        try:
+            parsed = json.loads(config.valor)
+            return {**default_config, **parsed}
+        except Exception:
+            pass
+
+    return default_config
+
 @router.put("/boletin")
 async def update_boletin_config(
     payload: dict = Body(...),
+    group_id: Optional[int] = Query(None),
     current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Persiste la configuración del boletín serializándola a formato JSON string.
-    Operación restringida exclusivamente a usuarios con rol 'admin'.
+    Si se proporciona group_id (en Query o en payload), se autoriza a administradores
+    globales o al administrador local del grupo en cuestión, guardándose en la clave del grupo.
     """
-    if current_user.rol != 'admin':
+    target_group_id = group_id if group_id is not None else payload.get("group_id")
+
+    # Verificación de permisos: Admin global o Admin local del grupo
+    is_authorized = False
+    if current_user.rol == 'admin':
+        is_authorized = True
+    elif target_group_id is not None:
+        from app.models.grupo import MiembroGrupo
+        membership = await db.scalar(
+            select(MiembroGrupo).where(
+                and_(
+                    MiembroGrupo.usuario_id == current_user.id,
+                    MiembroGrupo.grupo_id == target_group_id,
+                    MiembroGrupo.rol == 'admin'
+                )
+            )
+        )
+        if membership:
+            is_authorized = True
+
+    if not is_authorized:
         raise HTTPException(status_code=403, detail="No tienes permisos para editar el boletín")
-    
-    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "boletin_config"))
+
+    clave = f"boletin_config_group_{target_group_id}" if target_group_id is not None else "boletin_config"
+
+    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == clave))
     valor_str = json.dumps(payload)
     if not config:
-        config = ConfiguracionGlobal(clave="boletin_config", valor=valor_str)
+        config = ConfiguracionGlobal(clave=clave, valor=valor_str)
         db.add(config)
     else:
         config.valor = valor_str
-    
+
     await db.commit()
     return {"status": "success", "config": payload}

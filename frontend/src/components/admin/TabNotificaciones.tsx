@@ -4,8 +4,10 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Clock, Send, Users, User, X, Check, Eye } from 'lucide-react';
 import DailySummaryModal from '../DailySummaryModal';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabNotificaciones() {
+  const { activeGroup } = useGroup();
   const [activeSubTab, setActiveSubTab] = useState<'inmediato' | 'boletin'>('inmediato');
 
   // ---- ESTADO DE AVISO INMEDIATO ----
@@ -40,7 +42,26 @@ export default function TabNotificaciones() {
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+    fetchBoletinConfig();
+  }, [activeGroup?.id]);
+
+  const fetchBoletinConfig = async () => {
+    try {
+      const res = await api.get('/api/settings/boletin', {
+        params: activeGroup ? { group_id: activeGroup.id } : {}
+      });
+      if (res.data) {
+        if (res.data.hora) setHoraBoletin(res.data.hora);
+        if (res.data.phaseValue) setPhaseBoletin(res.data.phaseValue);
+        setBulletinConfig(prev => ({
+          ...prev,
+          ...res.data
+        }));
+      }
+    } catch {
+      // Ignorar fallos de carga inicial de config
+    }
+  };
 
   const fetchHistory = async () => {
     try {
@@ -104,7 +125,9 @@ export default function TabNotificaciones() {
   const handlePreviewBoletin = async () => {
     const toastId = toast.loading('Generando vista previa...');
     try {
-      const res = await api.get('/api/admin/summary-stats');
+      const res = await api.get('/api/admin/summary-stats', {
+        params: activeGroup ? { group_id: activeGroup.id } : {}
+      });
       const fullData = res.data;
       
       // Filter based on config
@@ -133,7 +156,10 @@ export default function TabNotificaciones() {
       await api.put('/api/settings/boletin', {
         hora: horaBoletin,
         phaseValue: phaseBoletin,
+        group_id: activeGroup?.id,
         ...bulletinConfig
+      }, {
+        params: activeGroup ? { group_id: activeGroup.id } : {}
       });
       toast.success('Boletín recurrente guardado a las ' + horaBoletin, { id: toastId });
     } catch (error: any) {

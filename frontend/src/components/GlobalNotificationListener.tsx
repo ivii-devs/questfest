@@ -17,9 +17,11 @@
  * ============================================================================
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuth } from '@/context/AuthContext';
+import { useGroup } from '@/context/GroupContext';
+import { usePathname } from 'next/navigation';
 import { BellRing, Check } from 'lucide-react';
 import DailySummaryModal, { DailySummaryData } from './DailySummaryModal';
 
@@ -32,46 +34,49 @@ export interface UnreadNotification {
   fecha_creacion?: string;
 }
 
+/**
+ * Rutas excluidas donde no debe proyectarse el boletín diario (como el Welcome Hub o login).
+ */
+const isExcludedRoute = (path: string): boolean => {
+  return (
+    path.startsWith('/groups') ||
+    path.startsWith('/login') ||
+    path.startsWith('/register') ||
+    path.startsWith('/join') ||
+    path.startsWith('/offline') ||
+    path.startsWith('/perfil') ||
+    path.startsWith('/settings')
+  );
+};
+
 export default function GlobalNotificationListener() {
   const { user } = useAuth();
+  const { activeGroup } = useGroup();
+  const pathname = usePathname();
   const [unreadNotif, setUnreadNotif] = useState<UnreadNotification | null>(null);
   const [boletinData, setBoletinData] = useState<DailySummaryData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user) return; // Solo se activa para sesiones autenticadas
-
-    // Comprobación inicial al montar el componente
-    checkUnread();
-    checkBoletin();
-
-    // Escuchador de disparos reactivos manuales
-    window.addEventListener('force-check-notifications', checkUnread);
-
-    // Ciclo de sondeo suave cada 15 segundos mientras no haya modal visible
-    const interval = setInterval(() => {
-      if (!isModalOpen) {
-        checkUnread();
-        checkBoletin();
-      }
-    }, 15000);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('force-check-notifications', checkUnread);
-    };
-  }, [user, isModalOpen]);
-
   /**
-   * Evalúa si ha llegado la hora configurada para proyectar el resumen matutino del grupo.
+   * Evalúa si ha llegado la hora configurada para proyectar el resumen matutino del grupo activo.
+   * 
+   * Aislamiento por grupo y protección del Welcome Hub:
+   * 1. Solo se ejecuta cuando el usuario se encuentra dentro de las vistas de un grupo activo.
+   * 2. Emplea una clave de persistencia en localStorage específica para cada usuario, grupo y fecha:
+   *    `summary_seen_${user.id}_${activeGroup.id}_${todayDate}`.
+   * 3. Consulta las estadísticas específicas del grupo vía query parameter `group_id`.
    */
-  const checkBoletin = async () => {
+  const checkBoletin = useCallback(async () => {
+    if (!user || !activeGroup || isExcludedRoute(pathname)) return;
+
     try {
       const todayDate = new Date().toISOString().split('T')[0];
-      const seenKey = `summary_seen_${todayDate}`;
+      const seenKey = `summary_seen_${user.id}_${activeGroup.id}_${todayDate}`;
       if (localStorage.getItem(seenKey)) return;
 
-      const resConfig = await api.get('/api/settings/boletin');
+      const resConfig = await api.get('/api/settings/boletin', {
+        params: { group_id: activeGroup.id }
+      });
       const config = resConfig.data;
       if (!config || !config.hora) return;
 
@@ -81,7 +86,9 @@ export default function GlobalNotificationListener() {
       targetTime.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
 
       if (now >= targetTime) {
-        const resStats = await api.get('/api/notifications/boletin-stats');
+        const resStats = await api.get('/api/notifications/boletin-stats', {
+          params: { group_id: activeGroup.id }
+        });
         const fullData = resStats.data;
         
         const filteredData: DailySummaryData = {};
@@ -100,14 +107,40 @@ export default function GlobalNotificationListener() {
     } catch {
       // Supresión silenciosa de excepciones transitorias de red
     }
-  };
+  }, [user, activeGroup, pathname]);
+
+  useEffect(() => {
+    if (!user) return; // Solo se activa para sesiones autenticadas
+
+    // Comprobación inicial al montar o al cambiar de grupo/ruta
+    checkUnread();
+    checkBoletin();
+
+    // Escuchador de disparos reactivos manuales
+    window.addEventListener('force-check-notifications', checkUnread);
+
+    // Ciclo de sondeo suave cada 15 segundos mientras no haya modal visible
+    const interval = setInterval(() => {
+      if (!isModalOpen) {
+        checkUnread();
+        checkBoletin();
+      }
+    }, 15000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('force-check-notifications', checkUnread);
+    };
+  }, [user, isModalOpen, checkBoletin]);
 
   /**
-   * Descarta el boletín del día guardando la clave local para no volver a interrumpir al usuario.
+   * Descarta el boletín del día guardando la clave local aislada por grupo y usuario.
    */
   const handleCloseBoletin = () => {
-    const todayDate = new Date().toISOString().split('T')[0];
-    localStorage.setItem(`summary_seen_${todayDate}`, 'true');
+    if (user && activeGroup) {
+      const todayDate = new Date().toISOString().split('T')[0];
+      localStorage.setItem(`summary_seen_${user.id}_${activeGroup.id}_${todayDate}`, 'true');
+    }
     setIsModalOpen(false);
     setBoletinData(null);
   };
@@ -159,6 +192,7 @@ export default function GlobalNotificationListener() {
 
   // Si la notificación es un Boletín (tiene config_boletin), mostramos el modal del boletín (LEGACY)
   if (unreadNotif.config_boletin) {
+    if (!activeGroup || isExcludedRoute(pathname)) return null;
     return (
       <DailySummaryModal 
         forceOpen={true} 

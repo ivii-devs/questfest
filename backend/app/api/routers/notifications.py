@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, delete
 from typing import Optional
 from datetime import date
 from pydantic import BaseModel
+
+from app.crud.admin_crud import calculate_summary_stats
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
@@ -166,68 +168,13 @@ async def mark_notification_as_read(
     return {"status": "success"}
 
 @router.get("/boletin-stats", response_model=DailySummaryStatsResponse)
-async def get_boletin_stats(db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from sqlalchemy import func
-    from datetime import datetime, timedelta, timezone
-    from sqlalchemy.orm import selectinload
-    
-    top1 = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.desc()).limit(1))
-    last = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.asc(), Usuario.id.asc()).limit(1))
-        
-    stmt_miss = select(PruebaMision.usuario_id, func.count(PruebaMision.id).label('c')).where(PruebaMision.estado == 'approved').group_by(PruebaMision.usuario_id).order_by(func.count(PruebaMision.id).desc()).limit(1)
-    res_miss = (await db.execute(stmt_miss)).first()
-    most_miss = None
-    if res_miss:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_miss[0]))
-        most_miss = StatUser(name=u.username, count=res_miss[1])
-        
-    stmt_bets = (
-        select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label('c'))
-        .join(Apuesta, Apuesta.id == TicketApuesta.apuesta_id)
-        .where(
-            and_(
-                Apuesta.estado == 'cerrada',
-                TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id
-            )
-        )
-        .group_by(TicketApuesta.usuario_id)
-        .order_by(func.count(TicketApuesta.id).desc())
-        .limit(1)
-    )
-    res_bets = (await db.execute(stmt_bets)).first()
-    most_bets = None
-    if res_bets:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_bets[0]))
-        most_bets = StatUser(name=u.username, count=res_bets[1])
-        
-    duel = await db.scalar(select(Duelo).where(Duelo.estado == 'completed').order_by(Duelo.tokens_en_juego.desc()).limit(1))
-    duel_winner = None
-    if duel:
-        d_full = await db.scalar(select(Duelo).options(selectinload(Duelo.retador), selectinload(Duelo.retado)).where(Duelo.id == duel.id))
-        duel_winner = DuelStat(name=d_full.retador.username, opponent=d_full.retado.username)
-        
-    ayer = datetime.now(timezone.utc) - timedelta(hours=24)
-    stmt_win = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad > 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).desc()).limit(1)
-    res_win = (await db.execute(stmt_win)).first()
-    biggest_winner = None
-    if res_win:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_win[0]))
-        biggest_winner = StatUser(name=u.username, amount=f"+{res_win[1]}")
-        
-    stmt_lose = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad < 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).asc()).limit(1)
-    res_lose = (await db.execute(stmt_lose)).first()
-    biggest_loser = None
-    if res_lose:
-        u = await db.scalar(select(Usuario).where(Usuario.id == res_lose[0]))
-        biggest_loser = StatUser(name=u.username, amount=str(res_lose[1]))
-
-    return DailySummaryStatsResponse(
-        phase="Noche 1",
-        firstPlace=StatUser(name=top1.username, points=top1.saldo_actual) if top1 else None,
-        lastPlace=StatUser(name=last.username, points=last.saldo_actual) if last else None,
-        mostBetsWon=most_bets,
-        mostMissions=most_miss,
-        duelWinner=duel_winner,
-        biggestWinner=biggest_winner,
-        biggestLoser=biggest_loser
-    )
+async def get_boletin_stats(
+    group_id: Optional[int] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """
+    Recupera las estadísticas destacadas de la jornada para el boletín informativo matutino.
+    Soporta filtrado contextual por 'group_id' para aislar las métricas a la comunidad activa.
+    """
+    return await calculate_summary_stats(db=db, group_id=group_id)
