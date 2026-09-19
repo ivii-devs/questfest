@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
 import { useRouter } from 'next/navigation';
+import { getApiErrorMessage } from '@/lib/errorHandler';
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -111,9 +112,14 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
       onClose();
       // Redirigimos al feed del nuevo grupo
       router.push('/feed');
-    } catch (error: any) {
-      console.error('[CreateGroupModal] Error al crear grupo:', error);
-      const detail = error.response?.data?.detail || 'No se pudo crear el grupo';
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
+        console.warn('[CreateGroupModal] Validación de negocio:', getApiErrorMessage(error));
+      } else {
+        console.error('[CreateGroupModal] Error inesperado al crear grupo:', error);
+      }
+      const detail = getApiErrorMessage(error, 'No se pudo crear el grupo');
       toast.error(detail);
     } finally {
       setSubmitting(false);

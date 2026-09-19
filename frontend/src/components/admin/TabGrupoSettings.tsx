@@ -18,6 +18,7 @@ import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { copyToClipboard } from '@/lib/clipboard';
+import { getApiErrorMessage } from '@/lib/errorHandler';
 
 /**
  * Pestaña de Ajustes del Grupo para el Panel de Administración.
@@ -192,8 +193,8 @@ export default function TabGrupoSettings() {
       toast.success('Información del grupo actualizada correctamente');
       setSelectedImage(null);
       await refreshGroups();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Error al actualizar grupo');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Error al actualizar grupo'));
     } finally {
       setSavingInfo(false);
     }
@@ -211,8 +212,8 @@ export default function TabGrupoSettings() {
       });
       toast.success(`Rol actualizado a: ${newRole}`);
       await fetchInviteAndMembers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'No se pudo cambiar el rol');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'No se pudo cambiar el rol'));
     }
   };
 

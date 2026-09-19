@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
 import { useRouter } from 'next/navigation';
+import { getApiErrorMessage } from '@/lib/errorHandler';
 
 interface JoinGroupModalProps {
   isOpen: boolean;
@@ -37,8 +38,14 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
 
     try {
       setSubmitting(true);
-      const payload: Record<string, any> = {
-        codigo_invitacion: codigo.trim().toUpperCase(),
+      const cleanCode = codigo.trim().toUpperCase();
+      const payload: {
+        codigo_unico: string;
+        codigo_invitacion: string;
+        password?: string;
+      } = {
+        codigo_unico: cleanCode,
+        codigo_invitacion: cleanCode,
         password: password.trim() || undefined,
       };
 
@@ -54,10 +61,15 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
       onClose();
       // Redirigir al feed del grupo ingresado
       router.push('/feed');
-    } catch (error: any) {
-      console.error('[JoinGroupModal] Error al unirse al grupo:', error);
-      const detail = error.response?.data?.detail || 'Error al unirse al grupo';
-      toast.error(detail);
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
+        console.warn('[JoinGroupModal] Validación de negocio:', getApiErrorMessage(error));
+      } else {
+        console.error('[JoinGroupModal] Error inesperado al unirse al grupo:', error);
+      }
+      const errorMessage = getApiErrorMessage(error, 'Error al unirse al grupo');
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

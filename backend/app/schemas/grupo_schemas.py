@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+from typing import Optional, Any
 from datetime import datetime
 
 class GroupCreate(BaseModel):
@@ -37,8 +37,30 @@ class UserGroupCardResponse(BaseModel):
     requiere_password: bool = False
 
 class GroupJoinRequest(BaseModel):
-    codigo_unico: str = Field(..., min_length=4, max_length=12, description="Código identificativo del grupo")
+    """
+    Esquema de solicitud para incorporarse a una comunidad existente.
+    
+    ¿Por qué admitir tanto 'codigo_unico' como 'codigo_invitacion'?
+    El backend internamente maneja 'codigo_unico' en la base de datos PostgreSQL,
+    pero las interfaces y componentes PWA del frontend pueden emplear el alias 'codigo_invitacion'.
+    Mediante un validador previo normalizamos ambos nombres y aseguramos que el código
+    se procese en mayúsculas sin espacios en blanco superfluos.
+    """
+    codigo_unico: Optional[str] = Field(None, min_length=4, max_length=12, description="Código identificativo del grupo (ej: QF-XXXXX)")
+    codigo_invitacion: Optional[str] = Field(None, min_length=4, max_length=12, description="Alias compatible para el frontend")
     password: Optional[str] = Field(None, description="Contraseña requerida si el grupo es privado")
+
+    @model_validator(mode="before")
+    @classmethod
+    def harmonize_code(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            code = data.get("codigo_unico") or data.get("codigo_invitacion")
+            if not code or not str(code).strip():
+                raise ValueError("Debes proporcionar el código de invitación o código identificativo del grupo.")
+            clean_code = str(code).strip().upper()
+            data["codigo_unico"] = clean_code
+            data["codigo_invitacion"] = clean_code
+        return data
 
 class GroupInviteResponse(BaseModel):
     codigo_unico: str

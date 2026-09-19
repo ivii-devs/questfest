@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '@/lib/errorHandler';
 
 interface JoinPageProps {
   params: Promise<{ code: string }>;
@@ -41,6 +42,7 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
     try {
       setSubmitting(true);
       const res = await api.post('/api/groups/join', {
+        codigo_unico: code,
         codigo_invitacion: code,
         password: password.trim() || undefined,
       });
@@ -51,10 +53,15 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
         setActiveGroupById(res.data.grupo.id);
       }
       router.push('/feed');
-    } catch (error: any) {
-      console.error('[DeepLinkJoin] Error al unirse:', error);
-      const detail = error.response?.data?.detail || 'No se pudo procesar la invitación';
-      toast.error(detail);
+    } catch (error: unknown) {
+      const err = error as { response?: { status?: number } };
+      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
+        console.warn('[DeepLinkJoin] Validación de negocio:', getApiErrorMessage(error));
+      } else {
+        console.error('[DeepLinkJoin] Error inesperado al unirse:', error);
+      }
+      const errorMessage = getApiErrorMessage(error, 'No se pudo procesar la invitación');
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

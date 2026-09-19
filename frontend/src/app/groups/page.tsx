@@ -34,6 +34,7 @@ import toast from 'react-hot-toast';
 import Link from 'next/link';
 import ThemeSettingsCard from '@/components/ThemeSettingsCard';
 import api from '@/lib/axios';
+import { getApiErrorMessage } from '@/lib/errorHandler';
 
 /**
  * Hub de Bienvenida (Welcome Hub) de QuestFest (/groups).
@@ -122,8 +123,7 @@ function WelcomeHubContent() {
       await refreshProfile();
       toast.success('Foto de perfil actualizada en todos los grupos', { id: toastId });
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      toast.error(err.response?.data?.detail || 'Error al subir la foto de perfil', { id: toastId });
+      toast.error(getApiErrorMessage(error, 'Error al subir la foto de perfil'), { id: toastId });
     } finally {
       setIsUploadingAvatar(false);
       if (avatarInputRef.current) {
@@ -158,8 +158,7 @@ function WelcomeHubContent() {
       toast.success('Nombre de usuario actualizado', { id: toastId });
       setIsEditingUsername(false);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      toast.error(err.response?.data?.detail || 'Error al actualizar el nombre de usuario', { id: toastId });
+      toast.error(getApiErrorMessage(error, 'Error al actualizar el nombre de usuario'), { id: toastId });
     } finally {
       setIsSavingUsername(false);
     }
@@ -183,8 +182,7 @@ function WelcomeHubContent() {
       toast.success('Descripción actualizada', { id: toastId });
       setIsEditingBio(false);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      toast.error(err.response?.data?.detail || 'Error al actualizar la descripción', { id: toastId });
+      toast.error(getApiErrorMessage(error, 'Error al actualizar la descripción'), { id: toastId });
     } finally {
       setIsSavingBio(false);
     }
@@ -209,8 +207,7 @@ function WelcomeHubContent() {
       await leaveGroup(group.id);
       toast.success(`Has abandonado "${group.nombre}"`);
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
-      toast.error(err.response?.data?.detail || 'Error al abandonar el grupo');
+      toast.error(getApiErrorMessage(error, 'Error al abandonar el grupo'));
     }
   };
 

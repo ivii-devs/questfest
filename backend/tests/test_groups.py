@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 from app.models.usuario import Usuario
-from app.schemas.grupo_schemas import GroupCreate, GroupUpdateRequest
+from app.schemas.grupo_schemas import GroupCreate, GroupUpdateRequest, GroupJoinRequest
 from app.crud import grupo_crud
 from app.crud.ledger_crud import move_tokens
 from app.models.grupo import MiembroGrupo
@@ -222,6 +222,62 @@ async def test_group_ranking_query(db_session):
     # 4. Consultar el ranking global sin group_id
     ranking_global = await get_global_ranking(group_id=None, db=db_session)
     assert any(r.username == "ranking_tester" for r in ranking_global)
+
+def test_group_join_request_schema_compatibility():
+    """
+    Verifica que el schema GroupJoinRequest acepte indistintamente:
+    - 'codigo_unico'
+    - 'codigo_invitacion' (alias enviado por componentes frontend PWA)
+    - Normalización automática a mayúsculas y eliminación de espacios en blanco
+    - Rechazo cuando no se suministra ninguno
+    """
+    # 1. Con codigo_invitacion en minúsculas y espacios
+    req_inv = GroupJoinRequest(codigo_invitacion="  qf-test1  ")
+    assert req_inv.codigo_unico == "QF-TEST1"
+    assert req_inv.codigo_invitacion == "QF-TEST1"
+
+    # 2. Con codigo_unico tradicional
+    req_uni = GroupJoinRequest(codigo_unico="qf-beta2")
+    assert req_uni.codigo_unico == "QF-BETA2"
+
+    # 3. Con ambos campos simultáneos
+    req_both = GroupJoinRequest(codigo_unico="qf-first", codigo_invitacion="qf-first")
+    assert req_both.codigo_unico == "QF-FIRST"
+
+    # 4. Sin ningún código debe fallar la validación
+    with pytest.raises(Exception):
+        GroupJoinRequest()
+
+@pytest.mark.asyncio
+async def test_join_group_with_codigo_invitacion_and_duplicate_error(db_session):
+    """
+    Simula el flujo reportado:
+    1. Un creador funda un grupo ("prueba").
+    2. El creador intenta unirse a su propio grupo con el código alfanumérico copiado.
+    3. Debe lanzar HTTP 400 Bad Request con detalle explicativo ("Ya eres miembro de este grupo.").
+    """
+    user = Usuario(username="tester_unico", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add(user)
+    await db_session.commit()
+
+    group_in = GroupCreate(nombre="prueba")
+    group = await grupo_crud.create_group(db_session, user.id, group_in)
+
+    # Validar que el request con codigo_invitacion se parsea bien
+    join_payload = GroupJoinRequest(codigo_invitacion=group.codigo_unico)
+    assert join_payload.codigo_unico == group.codigo_unico
+
+    # Intentar unirse a su propio grupo debe arrojar HTTP 400
+    with pytest.raises(HTTPException) as exc_dup:
+        await grupo_crud.join_group(
+            db=db_session,
+            user_id=user.id,
+            code=join_payload.codigo_unico,
+            password=join_payload.password
+        )
+    assert exc_dup.value.status_code == 400
+    assert "Ya eres miembro de este grupo" in exc_dup.value.detail
+
 
 
 
