@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 
 from app.models.grupo import Grupo, MiembroGrupo
 from app.models.usuario import Usuario, LedgerTransaccion
+from app.models.audit import AuditLog
 from app.schemas.grupo_schemas import (
     GroupCreate,
     UserGroupCardResponse,
@@ -224,6 +225,10 @@ async def leave_group(db: AsyncSession, user_id: int, group_id: int) -> None:
     if not miembro:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No eres miembro de este grupo.")
 
+    grupo = await db.scalar(select(Grupo).where(Grupo.id == group_id))
+    if not grupo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grupo no encontrado.")
+
     # Si es el creador/admin, comprobar si quedan otros administradores
     if miembro.rol == "admin":
         other_admins = await db.scalar(
@@ -243,6 +248,36 @@ async def leave_group(db: AsyncSession, user_id: int, group_id: int) -> None:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Eres el único administrador de este grupo. Debes nombrar a otro administrador antes de salir."
                 )
+
+    # Flujo de Seguridad: Delegación automática de la titularidad de Creador
+    # Si el fundador original decide darse de baja, su condición y facultades soberanas de creador
+    # se transfieren al siguiente administrador activo más antiguo de la comunidad.
+    if grupo.creador_id == user_id:
+        next_admin = await db.scalar(
+            select(MiembroGrupo).where(
+                MiembroGrupo.grupo_id == group_id,
+                MiembroGrupo.usuario_id != user_id,
+                MiembroGrupo.rol == "admin"
+            ).order_by(MiembroGrupo.fecha_union.asc())
+        )
+        if next_admin:
+            antiguo_creador_id = grupo.creador_id
+            grupo.creador_id = next_admin.usuario_id
+            audit_delegation = AuditLog(
+                grupo_id=group_id,
+                admin_id=user_id,
+                accion="delegate_group_creator",
+                entidad="grupo",
+                entidad_id=group_id,
+                detalles={
+                    "motivo": "Baja voluntaria del creador original",
+                    "antiguo_creador_id": antiguo_creador_id,
+                    "nuevo_creador_id": next_admin.usuario_id
+                }
+            )
+            db.add(audit_delegation)
+        else:
+            grupo.creador_id = None
 
     await db.delete(miembro)
     await db.commit()
@@ -479,3 +514,50 @@ async def update_group_settings(db: AsyncSession, admin_user_id: int, group_id: 
     await db.commit()
     await db.refresh(grupo)
     return grupo
+
+async def delete_group(db: AsyncSession, current_user_id: int, group_id: int) -> None:
+    """
+    Elimina definitivamente una comunidad y todos sus recursos vinculados en cascada.
+    
+    ¿Por qué esta lógica de negocio y arquitectura de seguridad?
+    1. Soberanía Exclusiva del Creador: Solo el usuario que fundó el grupo (o al que se le haya
+       delegado la condición oficial de 'creador_id') posee facultades para destruirlo.
+       Los administradores secundarios o creadores de otros grupos no pueden ejecutar esta acción.
+    2. Integridad Referencial en Cascada: La base de datos (PostgreSQL) se encarga de eliminar
+       atómicamente miembros, feed, misiones, apuestas, duelos y saldos locales vinculados al 'grupo_id'.
+    3. Trazabilidad Inmutable Zero-Trust: Fijamos 'grupo_id=None' en el registro de AuditLog
+       para que no sea eliminado por el ON DELETE CASCADE y quede constancia histórica permanente.
+    """
+    grupo = await db.scalar(select(Grupo).where(Grupo.id == group_id))
+    if not grupo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No existe ningún grupo con el identificador proporcionado."
+        )
+
+    # Validación de Soberanía Estricta: Únicamente el creador del grupo tiene potestad para destruirlo
+    if grupo.creador_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el creador del grupo tiene permisos para eliminar esta comunidad."
+        )
+
+    # Registro de auditoría persistente (desacoplado del grupo eliminado)
+    audit_entry = AuditLog(
+        grupo_id=None,
+        admin_id=current_user_id,
+        accion="delete_group",
+        entidad="grupo",
+        entidad_id=group_id,
+        detalles={
+            "nombre": grupo.nombre,
+            "codigo_unico": grupo.codigo_unico,
+            "creador_id": grupo.creador_id,
+            "motivo": "Eliminación definitiva solicitada por el creador"
+        }
+    )
+    db.add(audit_entry)
+
+    # Eliminación en cascada gestionada por PostgreSQL
+    await db.delete(grupo)
+    await db.commit()

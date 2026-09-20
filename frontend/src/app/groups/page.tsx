@@ -21,7 +21,8 @@ import {
   Camera,
   Pencil,
   X,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -29,6 +30,7 @@ import { useGroup, GroupMembership } from '@/context/GroupContext';
 import CreateGroupModal from '@/components/groups/CreateGroupModal';
 import JoinGroupModal from '@/components/groups/JoinGroupModal';
 import GroupInviteModal from '@/components/groups/GroupInviteModal';
+import DeleteGroupModal from '@/components/groups/DeleteGroupModal';
 import { subscribeToPushNotifications, isPushActive } from '@/lib/pushNotifications';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -60,6 +62,7 @@ function WelcomeHubContent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [inviteModalGroup, setInviteModalGroup] = useState<{ id: number; name: string } | null>(null);
+  const [deleteModalGroup, setDeleteModalGroup] = useState<{ id: number; name: string } | null>(null);
 
   // Menú flotante de 3 puntos activo (ID del grupo)
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
@@ -525,11 +528,25 @@ function WelcomeHubContent() {
                                   setOpenMenuId(null);
                                   handleLeaveGroup(e, group);
                                 }}
-                                className="w-full text-left px-3 py-2 text-xs font-bold text-dracula-red hover:bg-dracula-red hover:text-dracula-base flex items-center gap-2 transition-colors"
+                                className="w-full text-left px-3 py-2 text-xs font-bold text-dracula-gray hover:bg-dracula-base hover:text-dracula-light flex items-center gap-2 transition-colors"
                               >
                                 <LogOut size={14} />
                                 Salir del Grupo
                               </button>
+
+                              {/* Soberanía del Fundador: Solo el creador original tiene la opción de destruir el grupo */}
+                              {Boolean(user && group.creador_id && user.id === group.creador_id) && (
+                                <button
+                                  onClick={() => {
+                                    setOpenMenuId(null);
+                                    setDeleteModalGroup({ id: group.id, name: group.nombre });
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs font-bold text-dracula-red hover:bg-dracula-red hover:text-dracula-base flex items-center gap-2 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                  Eliminar Grupo
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -892,6 +909,15 @@ function WelcomeHubContent() {
           onClose={() => setInviteModalGroup(null)}
           groupId={inviteModalGroup.id}
           groupName={inviteModalGroup.name}
+        />
+      )}
+
+      {deleteModalGroup && (
+        <DeleteGroupModal
+          isOpen={!!deleteModalGroup}
+          onClose={() => setDeleteModalGroup(null)}
+          groupId={deleteModalGroup.id}
+          groupName={deleteModalGroup.name}
         />
       )}
     </div>

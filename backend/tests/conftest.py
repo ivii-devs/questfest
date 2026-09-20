@@ -16,9 +16,18 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"
 
 
+from sqlalchemy import event
+
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+@event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 TestingSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 @pytest_asyncio.fixture(scope="function")

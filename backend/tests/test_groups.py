@@ -3,10 +3,11 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 from sqlalchemy import select
 from app.models.usuario import Usuario, LedgerTransaccion
+from app.models.grupo import Grupo, MiembroGrupo
+from app.models.audit import AuditLog
 from app.schemas.grupo_schemas import GroupCreate, GroupUpdateRequest, GroupJoinRequest
 from app.crud import grupo_crud
 from app.crud.ledger_crud import move_tokens
-from app.models.grupo import MiembroGrupo
 from app.security import verify_password
 
 @pytest.mark.asyncio
@@ -510,6 +511,205 @@ async def test_group_responses_metadata_creator(db_session):
 
     assert founder_resp.es_creador is True
     assert member_resp.es_creador is False
+
+@pytest.mark.asyncio
+async def test_creator_can_delete_group_and_cascades(db_session):
+    """
+    Verifica que el creador puede eliminar su grupo y que todas las entidades
+    asociadas (miembros, muro social, misiones, apuestas y ledger local) se
+    eliminan atómicamente en cascada sin alterar los perfiles de usuario.
+    """
+    from app.models.publicaciones import Publicacion
+    from app.models.misiones import Mision
+    from app.models.juegos import Apuesta
+
+    founder = Usuario(username="el_gran_fundador", password_hash="hash", rol="player", saldo_actual=0)
+    player = Usuario(username="jugador_peña", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, player])
+    await db_session.commit()
+
+    # 1. Crear grupo y unir al jugador
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Peña A Destruir"))
+    await grupo_crud.join_group(db_session, player.id, group.codigo_unico)
+    group_id = group.id
+
+    # 2. Insertar publicaciones, misiones y apuestas vinculadas
+    post = Publicacion(grupo_id=group_id, tipo="social", autor_id=founder.id, contenido="¡Hola a todos en la peña!")
+    mision = Mision(grupo_id=group_id, titulo="Reto del Barril", creador_id=founder.id, descripcion="Beber agua", recompensa=50, fase="activa")
+    apuesta = Apuesta(grupo_id=group_id, titulo="¿Quién ganará el torneo?", creador_id=founder.id, opciones={"opt1": {"text": "A"}}, fase="activa")
+    db_session.add_all([post, mision, apuesta])
+    await db_session.commit()
+
+    # 3. Comprobar que existen antes de la eliminación
+    assert await db_session.scalar(select(Grupo).where(Grupo.id == group_id)) is not None
+    assert len((await db_session.execute(select(MiembroGrupo).where(MiembroGrupo.grupo_id == group_id))).all()) == 2
+    assert await db_session.scalar(select(Publicacion).where(Publicacion.grupo_id == group_id)) is not None
+    assert await db_session.scalar(select(Mision).where(Mision.grupo_id == group_id)) is not None
+    assert await db_session.scalar(select(Apuesta).where(Apuesta.grupo_id == group_id)) is not None
+
+    # 4. El creador ejecuta la eliminación definitiva
+    await grupo_crud.delete_group(db=db_session, current_user_id=founder.id, group_id=group_id)
+
+    # 5. Comprobar que el grupo y sus recursos vinculados desaparecieron en cascada
+    assert await db_session.scalar(select(Grupo).where(Grupo.id == group_id)) is None
+    assert len((await db_session.execute(select(MiembroGrupo).where(MiembroGrupo.grupo_id == group_id))).all()) == 0
+    assert await db_session.scalar(select(Publicacion).where(Publicacion.grupo_id == group_id)) is None
+    assert await db_session.scalar(select(Mision).where(Mision.grupo_id == group_id)) is None
+    assert await db_session.scalar(select(Apuesta).where(Apuesta.grupo_id == group_id)) is None
+    assert len((await db_session.execute(select(LedgerTransaccion).where(LedgerTransaccion.grupo_id == group_id))).all()) == 0
+
+    # 6. Los usuarios deben seguir existiendo en la plataforma intactos
+    assert await db_session.scalar(select(Usuario).where(Usuario.id == founder.id)) is not None
+    assert await db_session.scalar(select(Usuario).where(Usuario.id == player.id)) is not None
+
+@pytest.mark.asyncio
+async def test_non_creator_admin_cannot_delete_group(db_session):
+    """
+    Seguridad Estricta: Un usuario que tenga rol 'admin' pero que NO sea el creador
+    original no puede eliminar el grupo bajo ninguna circunstancia.
+    """
+    founder = Usuario(username="fundador_real", password_hash="hash", rol="player", saldo_actual=0)
+    secondary_admin = Usuario(username="admin_secundario_del", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, secondary_admin])
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Comunidad Protegida"))
+    await grupo_crud.join_group(db_session, secondary_admin.id, group.codigo_unico)
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, secondary_admin.id, "admin")
+
+    with pytest.raises(HTTPException) as exc_info:
+        await grupo_crud.delete_group(db=db_session, current_user_id=secondary_admin.id, group_id=group.id)
+
+    assert exc_info.value.status_code == 403
+    assert "Solo el creador" in exc_info.value.detail
+
+@pytest.mark.asyncio
+async def test_regular_member_cannot_delete_group(db_session):
+    """
+    Seguridad Estricta: Un miembro común recibe HTTP 403 Forbidden al intentar eliminar.
+    """
+    founder = Usuario(username="fundador_festejo", password_hash="hash", rol="player", saldo_actual=0)
+    member = Usuario(username="miembro_curioso", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, member])
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Peña Inviolable"))
+    await grupo_crud.join_group(db_session, member.id, group.codigo_unico)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await grupo_crud.delete_group(db=db_session, current_user_id=member.id, group_id=group.id)
+
+    assert exc_info.value.status_code == 403
+    assert "Solo el creador" in exc_info.value.detail
+
+@pytest.mark.asyncio
+async def test_other_group_creator_cannot_delete_foreign_group(db_session):
+    """
+    Aislamiento Multi-Tenancy: El creador del Grupo 1 no puede eliminar el Grupo 2.
+    """
+    founder1 = Usuario(username="creador_grupo_1", password_hash="hash", rol="player", saldo_actual=0)
+    founder2 = Usuario(username="creador_grupo_2", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder1, founder2])
+    await db_session.commit()
+
+    group1 = await grupo_crud.create_group(db_session, founder1.id, GroupCreate(nombre="Grupo Uno"))
+    group2 = await grupo_crud.create_group(db_session, founder2.id, GroupCreate(nombre="Grupo Dos"))
+
+    with pytest.raises(HTTPException) as exc_info:
+        await grupo_crud.delete_group(db=db_session, current_user_id=founder1.id, group_id=group2.id)
+
+    assert exc_info.value.status_code == 403
+    assert "Solo el creador" in exc_info.value.detail
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_group(db_session):
+    """
+    Verifica que intentar eliminar un grupo inexistente arroje HTTP 404.
+    """
+    user = Usuario(username="usuario_cualquiera", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add(user)
+    await db_session.commit()
+
+    with pytest.raises(HTTPException) as exc_info:
+        await grupo_crud.delete_group(db=db_session, current_user_id=user.id, group_id=999999)
+
+    assert exc_info.value.status_code == 404
+
+@pytest.mark.asyncio
+async def test_creator_delegation_on_leave_and_subsequent_delete(db_session):
+    """
+    Flujo de Seguridad: Si el creador original abandona la comunidad voluntariamente,
+    su titularidad ('creador_id') se delega automáticamente en el administrador más antiguo.
+    El nuevo titular adquiere de pleno derecho las facultades soberanas de creador (incluido el borrado).
+    """
+    founder = Usuario(username="creador_saliente", password_hash="hash", rol="player", saldo_actual=0)
+    new_admin = Usuario(username="admin_heredero", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([founder, new_admin])
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Comunidad Delegable"))
+    await grupo_crud.join_group(db_session, new_admin.id, group.codigo_unico)
+
+    # El creador nombra a new_admin como administrador
+    await grupo_crud.update_member_role(db_session, founder.id, group.id, new_admin.id, "admin")
+
+    # El creador original abandona el grupo
+    await grupo_crud.leave_group(db_session, founder.id, group.id)
+
+    # Comprobar que group.creador_id ahora apunta al heredero
+    await db_session.refresh(group)
+    assert group.creador_id == new_admin.id
+
+    # Comprobar que se generó un AuditLog con la delegación
+    delegation_log = await db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.grupo_id == group.id,
+            AuditLog.accion == "delegate_group_creator"
+        )
+    )
+    assert delegation_log is not None
+    assert delegation_log.detalles["nuevo_creador_id"] == new_admin.id
+
+    # El antiguo creador ya no puede eliminar el grupo
+    with pytest.raises(HTTPException) as exc_old:
+        await grupo_crud.delete_group(db=db_session, current_user_id=founder.id, group_id=group.id)
+    assert exc_old.value.status_code == 403
+
+    # El nuevo creador SÍ puede eliminar el grupo definitivamente
+    await grupo_crud.delete_group(db=db_session, current_user_id=new_admin.id, group_id=group.id)
+    assert await db_session.scalar(select(Grupo).where(Grupo.id == group.id)) is None
+
+@pytest.mark.asyncio
+async def test_audit_log_preserved_after_group_deletion(db_session):
+    """
+    Trazabilidad Zero-Trust: El registro de borrado en AuditLog debe persistir
+    con 'grupo_id=None' después de que el grupo ha sido purgado de la base de datos.
+    """
+    founder = Usuario(username="auditor_creador", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add(founder)
+    await db_session.commit()
+
+    group = await grupo_crud.create_group(db_session, founder.id, GroupCreate(nombre="Peña Auditable"))
+    group_id = group.id
+    group_name = group.nombre
+
+    await grupo_crud.delete_group(db=db_session, current_user_id=founder.id, group_id=group_id)
+
+    # El grupo ya no existe
+    assert await db_session.scalar(select(Grupo).where(Grupo.id == group_id)) is None
+
+    # Pero el registro de auditoría persiste con grupo_id=None
+    audit = await db_session.scalar(
+        select(AuditLog).where(
+            AuditLog.accion == "delete_group",
+            AuditLog.entidad == "grupo",
+            AuditLog.entidad_id == group_id
+        )
+    )
+    assert audit is not None
+    assert audit.grupo_id is None
+    assert audit.admin_id == founder.id
+    assert audit.detalles["nombre"] == group_name
 
 
 

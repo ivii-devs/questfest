@@ -36,7 +36,15 @@ class Grupo(Base):
 
     # Relaciones
     creador = relationship("Usuario", foreign_keys=[creador_id])
-    miembros: Mapped[List["MiembroGrupo"]] = relationship("MiembroGrupo", back_populates="grupo", cascade="all, delete-orphan")
+    # Optimizamos el borrado en cascada con passive_deletes=True para delegar la eliminación
+    # de membresías directamente a PostgreSQL vía ON DELETE CASCADE, evitando cargar en memoria
+    # colecciones masivas de participantes antes de purgar el registro del grupo.
+    miembros: Mapped[List["MiembroGrupo"]] = relationship(
+        "MiembroGrupo",
+        back_populates="grupo",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
 
 
 class MiembroGrupo(Base):

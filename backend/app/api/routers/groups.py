@@ -111,6 +111,26 @@ async def leave_group(
     await grupo_crud.leave_group(db=db, user_id=current_user.id, group_id=group_id)
     return {"message": "Has salido del grupo correctamente."}
 
+@router.delete("/{group_id}", status_code=status.HTTP_200_OK)
+@router.post("/{group_id}/delete", status_code=status.HTTP_200_OK)
+async def delete_group(
+    group_id: int,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Elimina definitivamente el grupo y todos sus recursos vinculados en cascada.
+    
+    Restricción de Soberanía:
+    Exclusivo para el fundador/creador del grupo. Cualquier intento por parte de otros
+    usuarios o administradores secundarios es rechazado con HTTP 403 Forbidden.
+    
+    Compatibilidad PWA:
+    Admite tanto DELETE como POST para sortear restricciones en clientes móviles y WebViews.
+    """
+    await grupo_crud.delete_group(db=db, current_user_id=current_user.id, group_id=group_id)
+    return {"message": "El grupo ha sido eliminado definitivamente."}
+
 @router.get("/{group_id}/invite", response_model=GroupInviteResponse)
 async def get_invite_info(
     group_id: int,

@@ -45,6 +45,7 @@ interface GroupContextType {
   refreshGroups: (targetActiveGroupId?: number) => Promise<void>;
   setActiveGroupById: (id: number) => void;
   leaveGroup: (id: number) => Promise<void>;
+  deleteGroup: (id: number) => Promise<void>;
   updateActiveGroupBalance: (delta: number) => void;
 }
 
@@ -140,6 +141,24 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
+   * Elimina definitivamente una comunidad por parte de su fundador/creador,
+   * limpiando el grupo activo de localStorage y sincronizando reactivamente las comunidades.
+   */
+  const deleteGroup = async (id: number) => {
+    try {
+      await api.delete(`/api/groups/${id}`);
+      if (activeGroup?.id === id) {
+        localStorage.removeItem('active_group_id');
+        setActiveGroup(null);
+      }
+      await refreshGroups();
+    } catch (error) {
+      console.error('[GroupContext] Error al eliminar el grupo:', error);
+      throw error;
+    }
+  };
+
+  /**
    * Actualiza optimistamente el saldo local del grupo activo
    * ante apuestas o recompensas completadas en tiempo real.
    */
@@ -174,6 +193,7 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
         refreshGroups,
         setActiveGroupById,
         leaveGroup,
+        deleteGroup,
         updateActiveGroupBalance,
       }}
     >

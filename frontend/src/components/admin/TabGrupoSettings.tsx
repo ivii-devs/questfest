@@ -13,8 +13,11 @@ import {
   UserCheck,
   Camera,
   X,
-  Crown
+  Crown,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGroup } from '@/context/GroupContext';
 import api from '@/lib/axios';
@@ -22,6 +25,7 @@ import toast from 'react-hot-toast';
 import { copyToClipboard } from '@/lib/clipboard';
 import { getApiErrorMessage } from '@/lib/errorHandler';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import DeleteGroupModal from '@/components/groups/DeleteGroupModal';
 
 /**
  * Representa la información de un participante del grupo devuelto por la API.
@@ -44,6 +48,7 @@ interface GroupMember {
  * 3. Gestionar los roles de los miembros (delegar privilegios de admin o revocar a miembro).
  */
 export default function TabGrupoSettings() {
+  const router = useRouter();
   const { user } = useAuth();
   const { activeGroup, refreshGroups } = useGroup();
 
@@ -73,6 +78,9 @@ export default function TabGrupoSettings() {
   // Miembros
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // Modal de Eliminación de Grupo (Zona de Peligro)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchInviteAndMembers = async () => {
     if (!activeGroup) return;
@@ -562,6 +570,43 @@ export default function TabGrupoSettings() {
           </div>
         )}
       </div>
+
+      {/* Sección 4: Zona de Peligro (Soberanía Exclusiva del Creador / Fundador) */}
+      {isCurrentUserCreator && (
+        <div className="bg-dracula-card border border-dracula-red/40 rounded-2xl p-5 shadow-xl space-y-3 animate-fade-in">
+          <div className="flex items-center gap-2 text-dracula-red font-black text-sm uppercase tracking-wider pb-2 border-b border-dracula-gray/20">
+            <AlertTriangle size={18} />
+            <span>Zona de Peligro</span>
+          </div>
+
+          <p className="text-xs text-dracula-gray leading-relaxed">
+            La eliminación de la comunidad destruye de forma permanente e irreversible todas las publicaciones,
+            retos, apuestas, duelos y saldos de QuestCoins de todos los participantes. Esta acción no se puede deshacer.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="w-full py-2.5 px-4 bg-dracula-red/10 border border-dracula-red hover:bg-dracula-red text-dracula-red hover:text-dracula-base font-black text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 shadow-md btn-press"
+          >
+            <Trash2 size={16} />
+            <span>Eliminar este Grupo Definitivamente</span>
+          </button>
+        </div>
+      )}
+
+      {/* Modal de confirmación obligatoria mediante nombre exacto */}
+      {activeGroup && (
+        <DeleteGroupModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          groupId={activeGroup.id}
+          groupName={activeGroup.nombre}
+          onSuccess={() => {
+            router.replace('/groups');
+          }}
+        />
+      )}
     </div>
   );
 }
