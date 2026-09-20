@@ -1,23 +1,24 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Habilitamos la salida 'standalone' para que Next.js trace y empaquete de manera autónoma
-  // únicamente las dependencias de producción necesarias en '.next/standalone', reduciendo el tamaño
-  // de la imagen Docker final de ~1GB a menos de 150MB y optimizando el consumo de memoria en el servidor.
-  output: 'standalone',
+  // En Docker usamos 'standalone' para optimizar la imagen a ~150MB.
+  // En Vercel (donde VERCEL=1 se define automáticamente), dejamos 'output' por defecto
+  // para que Vercel genere su enrutamiento serverless nativo sin errores 404.
+  output: process.env.VERCEL ? undefined : 'standalone',
   reactCompiler: true,
   allowedDevOrigins: ['192.168.1.101', 'localhost', '127.0.0.1'],
-  // Reescrituras para desarrollo local: permite consumir la API de FastAPI de forma transparente
-  // sin lidiar con bloqueos de CORS cuando el frontend corre en el puerto 3000 y el backend en el 8000.
+  // Reescrituras: únicamente en desarrollo local para redirigir peticiones relativas al puerto 8000 de FastAPI.
+  // En producción devolvemos array vacío para evitar bucles circulares de reescritura.
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: process.env.NODE_ENV === 'development'
-          ? 'http://127.0.0.1:8000/api/:path*'
-          : '/api/:path*',
-      },
-    ];
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/api/:path*',
+          destination: 'http://127.0.0.1:8000/api/:path*',
+        },
+      ];
+    }
+    return [];
   },
 };
 
