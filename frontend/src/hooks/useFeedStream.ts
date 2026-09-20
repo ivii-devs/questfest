@@ -92,66 +92,100 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
   }, [isLoadingMore, hasMore, posts, groupId]);
 
   /**
-   * Suscripción en tiempo real a Server-Sent Events (SSE) filtrados por grupo.
-   * Abre un canal `EventSource` nativo que escucha:
-   * - 'new_post': Inserta el post en la cabecera de la lista si no existe ya.
-   * - 'new_reply': Localiza el post padre (`parent_id`) e inserta la respuesta en su array anidado.
+   * Smart Polling (Sondeo Inteligente) adaptado a entornos Serverless (Vercel):
+   * En lugar de una conexión SSE persistente (que rompería por timeout en funciones serverless y
+   * no compartiría memoria de eventos entre réplicas), consultamos periódicamente el endpoint
+   * ultra ligero `GET /api/feed/latest-id`.
    * 
-   * Limpieza de recursos:
-   * Cuando el componente se desmonta o cambia el `groupId`, se cierra inmediatamente
-   * el socket `eventSource.close()` para no dejar conexiones huérfanas en el servidor.
+   * Estrategias de optimización de cuota (Vercel Hobby Tier - 100.000 peticiones/día):
+   * 1. Page Visibility API: El sondeo se detiene inmediatamente si la pestaña no está visible (0 peticiones en segundo plano).
+   * 2. Temporizador adaptativo de 15 segundos: Consumo controlado (~4 peticiones/minuto por usuario activo).
+   * 3. Pausa por inactividad: Si no hay interacción (scroll, toque, movimiento) en 2 minutos, se detiene el sondeo.
+   * 4. Revalidación al foco: Al regresar a la pestaña o ventana, se comprueba inmediatamente si hay publicaciones nuevas.
    */
   useEffect(() => {
     fetchInitialPosts();
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const streamUrl = groupId 
-      ? `${API_BASE}/api/feed/stream?group_id=${groupId}`
-      : `${API_BASE}/api/feed/stream`;
+    // Referencia para comparar si el último ID del servidor supera al post más reciente en memoria
+    let isCancelled = false;
+    let timerId: NodeJS.Timeout | null = null;
+    let lastActivity = Date.now();
+    const INACTIVITY_LIMIT_MS = 2 * 60 * 1000; // 2 minutos
+    const POLLING_INTERVAL_MS = 15 * 1000; // 15 segundos
 
-    const eventSource = new EventSource(streamUrl);
+    // Actualizar marca de actividad del usuario
+    const recordUserActivity = () => {
+      lastActivity = Date.now();
+    };
 
-    eventSource.onmessage = (event) => {
+    const checkNewPosts = async () => {
+      if (isCancelled || !user) return;
+
+      // Si la pestaña está oculta en segundo plano, no realizamos petición
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      // Si el usuario lleva más de 2 minutos inactivo en pantalla, pausamos el sondeo
+      if (Date.now() - lastActivity > INACTIVITY_LIMIT_MS) {
+        return;
+      }
+
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'new_post') {
-          const newPost: Post = {
-            ...data.payload,
-            exactTime: formatExactTime(data.payload.time_ago)
-          };
-          setPosts((prev) => {
-            if (prev.some((p) => p.id === newPost.id)) return prev;
-            return [newPost, ...prev];
-          });
-        } else if (data.type === 'new_reply') {
-          const { parent_id, reply } = data.payload;
-          setPosts((prev) =>
-            prev.map((p) => {
-              if (p.id === parent_id) {
-                const existingReplyIds = new Set((p.replies || []).map((r) => r.id));
-                if (existingReplyIds.has(reply.id)) return p;
-                return {
-                  ...p,
-                  replies: [...(p.replies || []), reply]
-                };
-              }
-              return p;
-            })
-          );
-        }
-      } catch {
-        // Ignoramos silenciosamente pings o mensajes no serializables en JSON del flujo SSE
+        const params: Record<string, string | number> = {};
+        if (groupId) params.group_id = groupId;
+
+        const response = await api.get<number>('/api/feed/latest-id', { params });
+        const serverLatestId = response.data;
+
+        // Comprobamos contra el post más reciente actual
+        setPosts((currentPosts) => {
+          const clientLatestId = currentPosts.length > 0 ? currentPosts[0].id : 0;
+          if (serverLatestId > clientLatestId) {
+            // Se detectó contenido nuevo en el grupo; disparamos actualización de las publicaciones
+            fetchInitialPosts();
+          }
+          return currentPosts;
+        });
+      } catch (err) {
+        // En sondeos de fondo ignoramos fallos intermitentes de red para no alertar innecesariamente al usuario
+        console.debug('Comprobación de novedades del feed en segundo plano:', err);
       }
     };
 
-    eventSource.onerror = () => {
-      eventSource.close();
+    // Iniciar el temporizador periódico
+    timerId = setInterval(checkNewPosts, POLLING_INTERVAL_MS);
+
+    // Escuchadores de eventos para optimización del ciclo de vida
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        recordUserActivity();
+        checkNewPosts();
+      }
     };
 
+    if (typeof window !== 'undefined') {
+      window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.addEventListener('focus', handleVisibilityOrFocus);
+      window.addEventListener('scroll', recordUserActivity, { passive: true });
+      window.addEventListener('touchstart', recordUserActivity, { passive: true });
+      window.addEventListener('mousemove', recordUserActivity, { passive: true });
+      window.addEventListener('keydown', recordUserActivity, { passive: true });
+    }
+
     return () => {
-      eventSource.close();
+      isCancelled = true;
+      if (timerId) clearInterval(timerId);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+        window.removeEventListener('focus', handleVisibilityOrFocus);
+        window.removeEventListener('scroll', recordUserActivity);
+        window.removeEventListener('touchstart', recordUserActivity);
+        window.removeEventListener('mousemove', recordUserActivity);
+        window.removeEventListener('keydown', recordUserActivity);
+      }
     };
-  }, [fetchInitialPosts, groupId]);
+  }, [fetchInitialPosts, groupId, user]);
 
   return {
     posts,

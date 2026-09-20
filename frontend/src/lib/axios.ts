@@ -17,8 +17,20 @@
 
 import axios from 'axios';
 
+const getBaseUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL !== undefined) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  // En producción (ej. Vercel bajo el mismo dominio), las peticiones a '/api/...' son relativas
+  if (process.env.NODE_ENV === 'production') {
+    return '';
+  }
+  // En desarrollo local por defecto apuntamos al servidor FastAPI en el puerto 8000
+  return 'http://localhost:8000';
+};
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  baseURL: getBaseUrl(),
   withCredentials: true,
 });
 

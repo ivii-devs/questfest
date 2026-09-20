@@ -1,5 +1,6 @@
 import os
 from typing import AsyncGenerator, Dict, Any
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 def normalize_database_url(url: str) -> str:
@@ -47,15 +48,31 @@ engine_kwargs: Dict[str, Any] = {
     "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
 }
 
-# Configuramos el tamaño del pool solo para bases de datos relacionales en red (como PostgreSQL).
-# En caso de usar SQLite en entornos de pruebas unitarias o memoria, evitamos pasar estos parámetros
-# para prevenir incompatibilidades con NullPool o StaticPool.
+# Detección de entornos Serverless (Vercel Functions o AWS Lambda) y Transaction Pooler de Supabase
+is_serverless = bool(os.getenv("VERCEL") or os.getenv("SERVERLESS") or os.getenv("DB_USE_NULLPOOL"))
+is_supabase_pooler = ":6543" in DATABASE_URL or os.getenv("SUPABASE_POOLER", "").lower() in ("true", "1")
+
+# Configuramos el pool según la infraestructura de ejecución:
+# - En Serverless (Vercel): Usamos 'NullPool' para no retener conexiones inactivas en contenedores
+#   efímeros y evitar saturar el límite de conexiones de PostgreSQL en Supabase.
+# - En Servidor Continuo (Docker / Local): Mantenemos un pool persistente optimizado con reciclaje preventivo.
 if not DATABASE_URL.startswith("sqlite"):
-    # pool_size: número de conexiones permanentes que se mantienen abiertas en el pool.
-    engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "10"))
-    # max_overflow: número máximo de conexiones adicionales temporales que pueden crearse
-    # durante picos repentinos de tráfico concurrente.
-    engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    if is_serverless:
+        engine_kwargs["poolclass"] = NullPool
+        # NullPool no requiere reciclaje programado ya que las conexiones se abren y cierran por petición
+        engine_kwargs.pop("pool_recycle", None)
+    else:
+        # pool_size: número de conexiones permanentes que se mantienen abiertas en el pool.
+        engine_kwargs["pool_size"] = int(os.getenv("DB_POOL_SIZE", "10"))
+        # max_overflow: número máximo de conexiones adicionales temporales que pueden crearse
+        # durante picos repentinos de tráfico concurrente.
+        engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+
+    # Cuando nos conectamos al Transaction Pooler de Supabase (puerto 6543 con PgBouncer/Supavisor),
+    # asyncpg debe desactivar la caché de sentencias preparadas para prevenir colisiones
+    # cruzadas ('PreparedStatementDoesNotExistError') entre transacciones compartidas.
+    if is_supabase_pooler or is_serverless:
+        engine_kwargs["connect_args"] = {"statement_cache_size": 0}
 
 # Creación del motor asíncrono con la configuración endurecida
 engine = create_async_engine(
