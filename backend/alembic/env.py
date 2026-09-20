@@ -27,10 +27,11 @@ config = context.config
 
 # --- INICIO DE TUS MODIFICACIONES ---
 
-# 3. Interceptar y sobrescribir la URL de base de datos para usar la de Docker (.env)
+# 3. Interceptar y sobrescribir la URL de base de datos normalizándola para asyncpg
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+    from app.core.database import normalize_database_url
+    config.set_main_option("sqlalchemy.url", normalize_database_url(database_url))
 
 # --- FIN DE TUS MODIFICACIONES ---
 
