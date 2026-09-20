@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from typing import Optional, Any
 from datetime import datetime
 
@@ -103,5 +103,27 @@ class GroupUpdateRequest(BaseModel):
     nombre: Optional[str] = Field(None, min_length=2, max_length=100, description="Nombre visible del grupo")
     descripcion: Optional[str] = Field(None, max_length=500, description="Descripción o temática del grupo")
     icono_url: Optional[str] = Field(None, description="URL de la foto o icono del grupo")
-    password: Optional[str] = Field(None, min_length=3, max_length=50, description="Contraseña opcional de acceso")
+    password: Optional[str] = Field(None, description="Nueva clave secreta (mínimo 3 caracteres) o cadena vacía para eliminar la protección")
     saldo_inicial: Optional[int] = Field(None, ge=0, le=10000, description="Saldo inicial de QuestCoins para nuevos miembros")
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_update(cls, v: Optional[str]) -> Optional[str]:
+        """
+        Regla de negocio para actualización de contraseñas de grupo:
+        - Si es None: el usuario no desea modificar la clave actual (se conserva el hash intacto).
+        - Si es cadena vacía o solo espacios: el administrador desmarcó la protección; se normaliza
+          a "" para que grupo_crud desactive 'requiere_password' y borre 'password_hash'.
+        - Si contiene texto no vacío: debe tener entre 3 y 50 caracteres para ser una clave válida.
+        """
+        if v is None:
+            return None
+        clean = v.strip()
+        if not clean:
+            return ""
+        if len(clean) < 3:
+            raise ValueError("La contraseña del grupo debe tener al menos 3 caracteres.")
+        if len(clean) > 50:
+            raise ValueError("La contraseña del grupo no puede superar los 50 caracteres.")
+        return clean
+

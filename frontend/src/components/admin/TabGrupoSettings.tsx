@@ -15,7 +15,8 @@ import {
   X,
   Crown,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -66,7 +67,8 @@ export default function TabGrupoSettings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [password, setPassword] = useState('');
-  const [hasPassword, setHasPassword] = useState(false);
+  // Sincronización inicial con el estado de protección del grupo activo
+  const [hasPassword, setHasPassword] = useState(Boolean(activeGroup?.requiere_password));
   const [savingInfo, setSavingInfo] = useState(false);
 
   // Invitaciones
@@ -106,9 +108,12 @@ export default function TabGrupoSettings() {
       setSaldoInicial(activeGroup.saldo_inicial ?? 100);
       setImagePreview(activeGroup.avatar_url || null);
       setSelectedImage(null);
+      // Sincronizamos el estado de la casilla y limpiamos el campo de clave tras recargas
+      setHasPassword(Boolean(activeGroup.requiere_password));
+      setPassword('');
       fetchInviteAndMembers();
     }
-  }, [activeGroup?.id, activeGroup?.saldo_inicial]);
+  }, [activeGroup?.id, activeGroup?.saldo_inicial, activeGroup?.requiere_password]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -197,6 +202,13 @@ export default function TabGrupoSettings() {
       return;
     }
 
+    // Validación de negocio: Si se activa la protección por contraseña en un grupo
+    // previamente desprotegido, es obligatorio introducir la clave inicial
+    if (hasPassword && !activeGroup.requiere_password && !password.trim()) {
+      toast.error('Debes introducir una contraseña para proteger el grupo');
+      return;
+    }
+
     try {
       setSavingInfo(true);
       let icono_url: string | undefined = undefined;
@@ -219,13 +231,24 @@ export default function TabGrupoSettings() {
       if (icono_url) {
         payload.icono_url = icono_url;
       }
-      if (hasPassword && password.trim()) {
+
+      // Sincronización soberana de contraseña:
+      // 1. Si la casilla está desmarcada y el grupo requería clave -> enviamos "" para eliminarla
+      if (!hasPassword) {
+        if (activeGroup.requiere_password) {
+          payload.password = '';
+        }
+      } else if (password.trim()) {
+        // 2. Si la casilla está marcada y el usuario escribió una clave -> actualizamos con la nueva clave
         payload.password = password.trim();
       }
+      // 3. Si la casilla está marcada, no se escribió nada y el grupo ya tenía clave ->
+      // no incluimos 'password' en el payload para preservar el hash existente en el backend.
 
       await api.patch(`/api/groups/${activeGroup.id}`, payload);
       toast.success('Información del grupo actualizada correctamente');
       setSelectedImage(null);
+      setPassword('');
       await refreshGroups();
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, 'Error al actualizar grupo'));
@@ -371,7 +394,12 @@ export default function TabGrupoSettings() {
               <input
                 type="checkbox"
                 checked={hasPassword}
-                onChange={(e) => setHasPassword(e.target.checked)}
+                onChange={(e) => {
+                  setHasPassword(e.target.checked);
+                  if (!e.target.checked) {
+                    setPassword('');
+                  }
+                }}
                 className="rounded text-dracula-purple focus:ring-dracula-purple bg-dracula-base w-4 h-4"
               />
               <span className="text-xs font-bold text-dracula-light flex items-center gap-1">
@@ -381,13 +409,31 @@ export default function TabGrupoSettings() {
             </label>
 
             {hasPassword && (
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Nueva clave secreta del grupo"
-                className="w-full mt-2 bg-dracula-base border border-dracula-yellow/40 rounded-xl p-2.5 text-sm text-dracula-light focus:outline-none focus:border-dracula-yellow"
-              />
+              <div className="mt-2 space-y-2 animate-fade-in">
+                {activeGroup.requiere_password ? (
+                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/30 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl">
+                    <ShieldCheck size={14} className="shrink-0 text-emerald-400" />
+                    <span>Este grupo ya cuenta con contraseña activa. Deja el campo vacío para conservarla o escribe una nueva para cambiarla.</span>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-dracula-gray">
+                    Los participantes deberán introducir esta clave secreta para poder unirse al grupo.
+                  </p>
+                )}
+
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={
+                    activeGroup.requiere_password
+                      ? "Nueva clave (dejar en blanco para mantener la actual)"
+                      : "Introduce la clave secreta del grupo"
+                  }
+                  className="w-full bg-dracula-base border border-dracula-yellow/40 rounded-xl p-2.5 text-sm text-dracula-light focus:outline-none focus:border-dracula-yellow"
+                />
+              </div>
             )}
           </div>
 

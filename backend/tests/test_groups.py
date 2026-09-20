@@ -712,6 +712,70 @@ async def test_audit_log_preserved_after_group_deletion(db_session):
     assert audit.detalles["nombre"] == group_name
 
 
+@pytest.mark.asyncio
+async def test_update_and_remove_group_password(db_session):
+    """
+    Verifica la gestión del ciclo de vida de la contraseña de un grupo:
+    1. Creación con contraseña inicial.
+    2. Actualización de otros metadatos omitiendo password (se preserva la clave actual).
+    3. Modificación de la contraseña por una nueva.
+    4. Eliminación de la contraseña enviando cadena vacía ("").
+    5. Validación de que nuevos usuarios pueden incorporarse sin clave tras desprotegerlo.
+    """
+    admin = Usuario(username="admin_pwd_lifecycle", password_hash="hash", rol="player", saldo_actual=0)
+    guest1 = Usuario(username="invitado_con_clave", password_hash="hash", rol="player", saldo_actual=0)
+    guest2 = Usuario(username="invitado_sin_clave", password_hash="hash", rol="player", saldo_actual=0)
+    db_session.add_all([admin, guest1, guest2])
+    await db_session.commit()
+
+    # 1. Crear grupo protegido con contraseña
+    group = await grupo_crud.create_group(
+        db_session,
+        admin.id,
+        GroupCreate(nombre="Peña Clave", password="primera_clave_123")
+    )
+    assert group.requiere_password is True
+    assert group.password_hash is not None
+
+    # 2. Actualizar solo nombre omitiendo password: la contraseña debe permanecer intacta
+    update_meta = GroupUpdateRequest(nombre="Peña Clave Renombrada", password=None)
+    group_updated = await grupo_crud.update_group_settings(db_session, admin.id, group.id, update_meta)
+    assert group_updated.nombre == "Peña Clave Renombrada"
+    assert group_updated.requiere_password is True
+    assert verify_password("primera_clave_123", group_updated.password_hash)
+
+    # 3. Cambiar la contraseña a una nueva
+    update_new_pwd = GroupUpdateRequest(password="segunda_clave_456")
+    group_pwd_changed = await grupo_crud.update_group_settings(db_session, admin.id, group.id, update_new_pwd)
+    assert group_pwd_changed.requiere_password is True
+    assert verify_password("segunda_clave_456", group_pwd_changed.password_hash)
+
+    # Invitado 1 se une satisfactoriamente con la nueva clave
+    joined_guest1 = await grupo_crud.join_group(
+        db_session,
+        guest1.id,
+        group.codigo_unico,
+        password="segunda_clave_456"
+    )
+    assert joined_guest1.id == group.id
+
+    # 4. Desproteger el grupo enviando cadena vacía
+    update_remove_pwd = GroupUpdateRequest(password="")
+    group_unprotected = await grupo_crud.update_group_settings(db_session, admin.id, group.id, update_remove_pwd)
+    assert group_unprotected.requiere_password is False
+    assert group_unprotected.password_hash is None
+
+    # 5. Invitado 2 se une sin contraseña ahora que el grupo es público
+    joined_guest2 = await grupo_crud.join_group(
+        db_session,
+        guest2.id,
+        group.codigo_unico,
+        password=None
+    )
+    assert joined_guest2.id == group.id
+
+
+
 
 
 
