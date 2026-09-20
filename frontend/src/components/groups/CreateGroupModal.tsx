@@ -92,14 +92,16 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
     try {
       let icono_url: string | undefined = undefined;
 
-      // 1. Subir imagen si fue adjuntada por el usuario
+      // 1. Subir imagen a Cloudinary si fue adjuntada por el usuario.
+      // Usamos el endpoint canónico '/api/upload/image' y extraemos 'secure_url'
+      // garantizando compatibilidad con el formato devuelto por la API de subida.
       if (selectedImage) {
         const formData = new FormData();
         formData.append('file', selectedImage);
-        const uploadRes = await api.post('/api/upload/', formData, {
+        const uploadRes = await api.post('/api/upload/image', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        icono_url = uploadRes.data?.url;
+        icono_url = uploadRes.data?.secure_url || uploadRes.data?.url;
       }
 
       // 2. Crear grupo con saldo inicial configurado (por defecto 100 si se dejó vacío)

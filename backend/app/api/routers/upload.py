@@ -59,6 +59,9 @@ def validate_magic_bytes(contents: bytes, content_type: str) -> bool:
         return True # Fallback para contenedores de video dinámicos
     return False
 
+# Soportamos tanto la ruta canónica `/image` como la raíz `/` para evitar errores 404
+# si algún cliente o formulario antiguo envía la petición directamente al prefijo del router.
+@router.post("/", status_code=status.HTTP_200_OK)
 @router.post("/image", status_code=status.HTTP_200_OK)
 @limiter.limit("5/minute")
 async def upload_image(
@@ -98,6 +101,12 @@ async def upload_image(
             })
 
         result = cloudinary.uploader.upload(contents, **upload_params)
-        return {"secure_url": result.get("secure_url")}
+        # Devolvemos tanto 'secure_url' como 'url' para asegurar compatibilidad retroactiva
+        # si algún componente del frontend consume una clave u otra.
+        media_url = result.get("secure_url")
+        return {
+            "secure_url": media_url,
+            "url": media_url,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error subiendo la imagen: {str(e)}")

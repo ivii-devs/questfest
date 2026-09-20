@@ -111,3 +111,16 @@ def test_get_real_client_ip_fallback_no_client():
     }
     request = Request(scope)
     assert get_real_client_ip(request) == "127.0.0.1"
+
+
+def test_upload_routes_registered():
+    """
+    Verifica que el router de subida tenga registradas tanto la ruta canónica
+    '/api/upload/image' como el alias directo '/api/upload/' para tolerar envíos
+    desde diferentes componentes del frontend sin provocar errores 404.
+    """
+    from app.main import app
+    paths = app.openapi()["paths"]
+    assert "/api/upload/image" in paths
+    assert "/api/upload/" in paths
+
