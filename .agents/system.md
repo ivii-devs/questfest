@@ -27,6 +27,7 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 - Mantén el desacoplamiento estricto entre frontend y backend mediante contratos REST tipados.
 - Respeta la arquitectura Mobile-First: áreas táctiles mínimas de $48\times 48\text{ px}$, variables CSS de zona segura (`env(safe-area-inset-*)`), resiliencia offline y Service Worker con WebPush VAPID nativo.
 - Asincronía estricta (`async`/`await`) en backend con SQLAlchemy 2.0 y `asyncpg`.
+- Respeta la topología dual (Docker con SSE vs Serverless en Vercel con NullPool y Smart Polling) descrita en [context/architecture.md](context/architecture.md).
 
 ### 2. Comentarios Humanizados (Pair Programming)
 
