@@ -39,8 +39,9 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 
 - **Fuente**: [workflows/feature-lifecycle.md](workflows/feature-lifecycle.md).
 - Aplica tipado estricto en TypeScript (`strict: true`) y Python (type hints y esquemas Pydantic v2).
-- Diseña y ejecuta suites de tests automatizados (`pytest`, fixtures con `httpx`, tests de frontend o verificación de build/lint).
-- Cero tolerancia a asunciones no demostradas o código no testeado: valida empíricamente los resultados antes de dar una entrega por concluida.
+- Diseña y ejecuta suites de tests automatizados (`pytest`, fixtures con `httpx`, tests de frontend o verificación de build/lint) **exclusivamente tras realizar modificaciones efectivas de código**.
+- Cero tolerancia a asunciones no demostradas o código no testeado en entregas con cambios de lógica: valida empíricamente los resultados antes de dar por concluida la implementación.
+- **Ámbito de exclusión**: Queda expresamente exento de ejecutar tests o builds cualquier requerimiento de solo análisis, investigación, redacción de planes de implementación, consultas técnicas o ediciones meramente documentales/markdown, a menos que el usuario lo solicite expresamente.
 
 ### 4. Pruebas y Auditoría de Seguridad (Zero-Trust & Ledger Inmutable)
 
@@ -97,6 +98,7 @@ Toda petición de trabajo sigue el ciclo unificado de 5 fases definido en [workf
 1. **PROHIBIDO** ejecutar `git commit`, `git push` o alterar ramas remotas sin autorización explícita del usuario ([workflows/git-approval-flow.md](workflows/git-approval-flow.md)).
 2. **PROHIBIDO** finalizar modificaciones de código o lógica sin sincronizar las notas de `obsidian_vault/` ([workflows/sync-vault.md](workflows/sync-vault.md)).
 3. **PROHIBIDO** generar código sin comentarios explicativos humanizados en español estilo pair programming justificando el "por qué" y las reglas de negocio ([context/conventions.md](context/conventions.md)).
-4. **PROHIBIDO** dar por concluida una funcionalidad con tests fallidos, asunciones no verificadas o dependencias rotas ([workflows/feature-lifecycle.md](workflows/feature-lifecycle.md)).
+4. **PROHIBIDO** dar por concluida una funcionalidad o modificación de código con tests fallidos, asunciones no verificadas o dependencias rotas ([workflows/feature-lifecycle.md](workflows/feature-lifecycle.md)).
 5. **PROHIBIDO** alterar balances de QuestCoins sin entrada atómica en `LedgerTransaccion` o permitir que el cliente calcule resultados de juego ([context/security.md](context/security.md)).
 6. **PROHIBIDO** insertar rutas locales absolutas de disco (`C:\...`, `file:///...`) en archivos de configuración o documentación. Emplea exclusivamente rutas relativas portables.
+7. **PROHIBIDO** ejecutar suites de pruebas (`pytest`, `npm test`) o compilaciones (`npm run build`) durante fases de análisis técnico, diseño, redacción de planes de implementación, respuestas a dudas o tareas puramente documentales, salvo indicación explícita del usuario.

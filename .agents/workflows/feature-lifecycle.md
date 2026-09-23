@@ -35,6 +35,7 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
   - Examina los requerimientos del usuario y determina los componentes afectados (backend, frontend, base de datos, configuración).
   - Consulta las fuentes vivas de la verdad técnica ([context/architecture.md](../context/architecture.md)).
   - Diseña el enfoque asegurando el desacoplamiento cliente-servidor y la invarianza de reglas de negocio.
+  - **Aislamiento de fase**: Durante el análisis o la redacción de planes de implementación está **terminantemente prohibido** ejecutar suites de tests (`pytest`) o compilaciones (`npm run build`). La verificación activa se reserva para después de la implementación de código.
 
 - [ ] **Fase 2: Implementación con Comentarios Humanizados**
   - Desarrolla el código necesario manteniendo tipado estricto en Python y TypeScript.
@@ -42,8 +43,9 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
   - Si afecta a la interfaz de usuario, aplica rigurosamente los estándares PWA: enfoque Mobile-First, target táctil $\ge 48\times 48\text{ px}$, safe-area-inset y degradación offline ([context/pwa-standards.md](../context/pwa-standards.md)).
 
 - [ ] **Fase 3: Quality Gate y Auditoría de Seguridad (Zero-Trust)**
+  - **Condición de activación**: Esta fase se activa **únicamente** tras haber modificado código en Fase 2. Quedan excluidas las consultas, diseños, redacción de planes de implementación o modificaciones exclusivas de documentación.
   - Ejecuta validaciones de compilación y tipado (`npm run lint`, `npm run build` en frontend).
-  - Diseña y corre la suite de pruebas automatizadas en backend (`pytest tests/ -v`).
+  - Diseña y corre la suite de pruebas automatizadas en backend empleando el entorno virtual del proyecto (`.\venv\Scripts\pytest tests/ -v` desde `backend/`).
   - Audita el cumplimiento de seguridad ([context/security.md](../context/security.md)):
     - Consultas SQLAlchemy parametrizadas (sin inyección SQL).
     - Protección y validación de endpoints y DTOs con Pydantic v2.

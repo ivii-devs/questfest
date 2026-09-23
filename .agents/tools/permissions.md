@@ -3,8 +3,8 @@
 ## 1. Clasificación de Comandos de Terminal
 
 ### A. Comandos Seguros Permitidos (Lista Blanca)
-Ejecuta de forma autónoma estos comandos de inspección, compilación y pruebas:
-- **Testing**: `pytest`, `pytest-asyncio`, `npm run test`, `npx vitest`.
+Ejecuta de forma autónoma estos comandos de inspección, compilación y pruebas (siempre dentro de la fase correspondiente del ciclo de vida; no ejecutar pruebas o builds en tareas de análisis, planes o consultas):
+- **Testing**: `pytest`, `pytest-asyncio`, `npm run test`, `npx vitest` (empleando siempre el entorno virtual del backend `backend\venv\Scripts\pytest`).
 - **Inspección de Estado y Git**: `git status`, `git diff`, `git log -n <N>`, `git branch`.
 - **Dependencias y Build**: `npm run build`, `npm run lint`, `pip list`.
 - **Contenedores (Estado)**: `docker ps`, `docker-compose ps`, `docker logs`.
