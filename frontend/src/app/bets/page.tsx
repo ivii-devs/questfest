@@ -481,7 +481,7 @@ function PlaceBetModal({
               min={1}
               value={amount}
               onChange={setAmount}
-              placeholder="Cantidad a arriesgar..."
+              placeholder="Tokens a apostar..."
               icon="💰"
               className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-sm font-bold text-dracula-yellow border border-dracula-gray/20 focus:outline-none focus:border-dracula-yellow"
             />
@@ -630,7 +630,7 @@ function SuggestBetModal({ onClose, onSuccess, groupId }: SuggestBetModalProps) 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-dracula-card rounded-xl p-3 text-sm text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-[#ffb86c]"
-              placeholder="Ej: ¿Quién se quemará primero al sol?"
+              placeholder="Pregunta de la apuesta..."
             />
           </div>
 
@@ -648,7 +648,7 @@ function SuggestBetModal({ onClose, onSuccess, groupId }: SuggestBetModalProps) 
                   type="text"
                   value={opt.text}
                   onChange={(e) => updateOption(index, 'text', e.target.value)}
-                  placeholder={`Opción ${index + 1}...`}
+                  placeholder={`Opción ${index + 1}`}
                   className="flex-[3] bg-dracula-card rounded-xl p-3 text-sm text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-[#ffb86c]"
                 />
                 <div className="flex-[1.5] relative">

@@ -656,7 +656,7 @@ function WelcomeHubContent() {
                         autoFocus
                         disabled={isSavingUsername}
                         className="w-full bg-dracula-base border border-dracula-purple rounded-xl py-1.5 pl-7 pr-2.5 text-sm font-bold text-dracula-light focus:outline-none focus:ring-2 focus:ring-dracula-purple/50 transition-all"
-                        placeholder="tu_alias"
+                        placeholder="Nombre de usuario"
                       />
                     </div>
                     <button
@@ -717,7 +717,7 @@ function WelcomeHubContent() {
                         disabled={isSavingBio}
                         maxLength={150}
                         rows={3}
-                        placeholder="Escribe un estado o algo sobre ti para que te reconozcan..."
+                        placeholder="Estado o descripción (opcional)..."
                         className="w-full bg-dracula-base border border-dracula-purple rounded-xl p-3 text-sm text-dracula-light focus:outline-none focus:ring-2 focus:ring-dracula-purple/50 resize-none transition-all placeholder:text-dracula-gray/60 placeholder:italic"
                       />
                       <div className="text-[10px] text-right text-dracula-gray mt-1">

@@ -85,7 +85,7 @@ export default function CreatePostForm({ user, onPostCreated, groupId }: CreateP
           <textarea
             value={newPostText}
             onChange={(e) => setNewPostText(e.target.value)}
-            placeholder="¿Qué está pasando?"
+            placeholder="Escribe una publicación..."
             aria-label="Contenido de la publicación"
             className="w-full bg-transparent text-sm text-dracula-light focus:outline-none resize-none pt-2 h-14 placeholder-dracula-gray/50"
             maxLength={280}
@@ -142,7 +142,7 @@ export default function CreatePostForm({ user, onPostCreated, groupId }: CreateP
           aria-label="Enviar publicación"
           className="bg-dracula-purple text-dracula-base px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          <Send size={12} /> {isUploading ? 'Subiendo...' : 'Postear'}
+          <Send size={12} /> {isUploading ? 'Subiendo...' : 'Publicar'}
         </button>
       </div>
     </section>

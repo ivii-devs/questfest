@@ -80,7 +80,7 @@ export default function RegisterPage() {
               autoComplete="username"
               required
               className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-300"
-              placeholder="Ej. ivan, david..."
+              placeholder="Nombre de usuario"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
@@ -121,7 +121,7 @@ export default function RegisterPage() {
             disabled={isSubmitting}
             className={`w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 active:from-amber-400 active:to-amber-500 lg:hover:from-amber-400 lg:hover:to-amber-500 text-slate-900 font-bold rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.3)] transform active:scale-[0.98] lg:hover:scale-[1.02] transition-all duration-300 mt-2 btn-press ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            {isSubmitting ? 'Forjando ficha...' : 'Comenzar Aventura'}
+            {isSubmitting ? 'Creando cuenta...' : 'Registrarme'}
           </button>
         </form>
 

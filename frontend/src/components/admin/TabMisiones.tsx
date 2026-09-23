@@ -276,7 +276,7 @@ function TribunalView() {
                   value={rechazoMotivo}
                   onChange={(e) => setRechazoMotivo(e.target.value)}
                   className="w-full bg-dracula-base border border-dracula-red/20 rounded p-3 text-sm text-dracula-light focus:outline-none focus:border-dracula-red resize-none h-20"
-                  placeholder="Explica al jugador por qué su prueba no es válida..."
+                  placeholder="Motivo del rechazo de la prueba..."
                 />
                 <div className="flex gap-2">
                   <button onClick={() => setRejectingId(null)} className="flex-1 py-2 text-xs font-bold text-dracula-gray bg-dracula-base rounded hover:text-dracula-light border border-dracula-gray/20">

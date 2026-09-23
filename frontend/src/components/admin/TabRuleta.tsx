@@ -30,8 +30,8 @@ export default function TabRuleta() {
     <div className="p-4 flex flex-col gap-6 animate-fadeIn">
       <div className="bg-dracula-card rounded-2xl p-4 border border-dracula-gray/20">
         <h2 className="text-lg font-bold mb-4 text-[#ffb86c] flex items-center gap-2"><Plus size={20}/> Añadir al Bombo</h2>
-        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título de la Misión" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#ffb86c] outline-none mb-3 transition-colors" />
-        <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción..." className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#ffb86c] outline-none h-20 mb-3 resize-none transition-colors" />
+        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título de la misión" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#ffb86c] outline-none mb-3 transition-colors" />
+        <textarea value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Descripción de la misión..." className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#ffb86c] outline-none h-20 mb-3 resize-none transition-colors" />
         <div className="flex items-center gap-3 mb-4">
           <span className="text-sm font-bold text-dracula-gray">Recompensa:</span>
           <TokenAmountInput
@@ -49,7 +49,7 @@ export default function TabRuleta() {
 
       <div className="bg-dracula-card rounded-2xl p-4 border border-dracula-gray/20 opacity-50">
         <h2 className="text-lg font-bold mb-2 text-dracula-gray flex items-center gap-2">Destinos de Hoy</h2>
-        <p className="text-xs text-dracula-gray">Proximamente se conectará con el historial diario de tiradas.</p>
+        <p className="text-xs text-dracula-gray">Próximamente se mostrará aquí el registro de tiradas de la jornada.</p>
       </div>
     </div>
   );

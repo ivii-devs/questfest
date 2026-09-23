@@ -34,7 +34,12 @@ async def get_rules(db: AsyncSession = Depends(get_db)):
     Si no existe aún un registro personalizado en la BD, retorna el texto por defecto.
     """
     config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "reglas"))
-    default_rules = "Bienvenido a QuestFest: Misiones reales en fiestas reales. Aquí estarán las reglas del juego."
+    default_rules = (
+        "Reglas del evento:\n"
+        "1. Las decisiones del Tribunal son definitivas.\n"
+        "2. Las apuestas y retos confirmados no se pueden cancelar.\n"
+        "3. Toda misión requiere prueba gráfica para su validación."
+    )
     return ReglasResponse(reglas=config.valor if config else default_rules)
 
 @router.put("/rules", response_model=ReglasResponse)

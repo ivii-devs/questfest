@@ -72,7 +72,7 @@ export default function BalanceNotificationModal() {
 
           <div className="flex flex-col gap-1 w-full">
             <span className="text-[10px] text-dracula-gray uppercase font-bold tracking-widest block mb-1">
-              Motivo Divino
+              Motivo del ajuste
             </span>
             <p className="text-sm font-medium text-dracula-light bg-dracula-card p-3 rounded-xl border border-dracula-gray/10 italic leading-relaxed">
               "{alertData.reason}"

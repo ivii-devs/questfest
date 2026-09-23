@@ -191,7 +191,7 @@ export default function TabApuestas() {
                               <li key={idx} className="flex gap-2 items-center">
                                 <input 
                                   type="text" 
-                                  placeholder="Texto de opción"
+                                  placeholder="Texto de la opción"
                                   className="flex-1 bg-dracula-card border border-dracula-gray/20 text-dracula-light text-xs rounded-lg p-2 focus:outline-none focus:border-dracula-purple"
                                   value={opt.text}
                                   onChange={(e) => {

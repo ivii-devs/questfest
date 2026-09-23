@@ -150,7 +150,7 @@ export default function TabDuelos() {
                       </label>
                       <input 
                         type="text" 
-                        placeholder="Concepto..." 
+                        placeholder="Motivo de la penalización" 
                         value={motivoMultas[duel.id] ?? ''}
                         onChange={(e) => setMotivoMultas({...motivoMultas, [duel.id]: e.target.value})}
                         className="w-full bg-dracula-base rounded-lg py-2 px-3 text-sm text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"

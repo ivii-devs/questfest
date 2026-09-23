@@ -515,7 +515,7 @@ function CreateDuelModal({ users, onClose, onSuccess, groupId }: CreateDuelModal
               name="duelGame"
               type="text"
               className="w-full bg-dracula-card rounded-xl p-3 text-base text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
-              placeholder="Ej: Futbolín, 100m lisos, FIFA..."
+              placeholder="Juego o disciplina del duelo"
               value={game}
               onChange={(e) => setGame(e.target.value)}
             />

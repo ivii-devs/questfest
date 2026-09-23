@@ -186,8 +186,8 @@ export default function TabNotificaciones() {
           <div className="bg-dracula-card rounded-2xl p-4 border border-[#8be9fd]/30 shadow-[0_0_15px_rgba(139,233,253,0.1)]">
             <h3 className="text-[#8be9fd] font-bold mb-4">Redactar Push Inmediato</h3>
             
-            <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título del aviso" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#8be9fd] outline-none mb-3 transition-colors" />
-            <textarea value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Mensaje..." className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#8be9fd] outline-none h-24 mb-4 resize-none transition-colors" />
+            <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título de la notificación" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#8be9fd] outline-none mb-3 transition-colors" />
+            <textarea value={mensaje} onChange={e => setMensaje(e.target.value)} placeholder="Mensaje de la notificación..." className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light focus:border-[#8be9fd] outline-none h-24 mb-4 resize-none transition-colors" />
 
             <div className="flex flex-col mb-4">
               <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest mb-2 px-1">Audiencia Objetivo</label>

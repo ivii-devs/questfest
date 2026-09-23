@@ -148,7 +148,7 @@ function FeedCardComponent({ post, onRefresh }: FeedCardProps) {
             type="text"
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Escribe tu respuesta..."
+            placeholder="Escribe una respuesta..."
             aria-label="Escribe tu respuesta"
             className="flex-1 bg-dracula-base text-xs text-dracula-light px-3 py-2 rounded-lg border border-dracula-purple/30 focus:outline-none"
             onKeyDown={(e) => e.key === 'Enter' && handleReply()}

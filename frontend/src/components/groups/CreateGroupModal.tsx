@@ -171,7 +171,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Colegas de Fiesta 2026"
+                placeholder="Nombre del grupo o evento"
                 className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-purple transition-all"
               />
             </div>
@@ -187,7 +187,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
               name="groupDescription"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="¿De qué trata este grupo o evento festivo?"
+              placeholder="Descripción o normas del grupo (opcional)..."
               rows={2}
               className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl p-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-purple transition-all resize-none"
             />
@@ -287,7 +287,7 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
                   aria-label="Contraseña del grupo"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Introduce la clave secreta del grupo"
+                  placeholder="Contraseña del grupo"
                   className="w-full bg-dracula-base border border-dracula-yellow/50 rounded-xl py-2 px-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
                 />
                 <p className="text-[10px] text-dracula-gray mt-1">

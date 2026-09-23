@@ -435,7 +435,7 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-green resize-none h-20"
-              placeholder="Explica cómo la has completado..."
+              placeholder="Detalles sobre cómo completaste la prueba..."
             />
           </div>
         </div>
@@ -524,7 +524,7 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-yellow"
-              placeholder="Ej: El Rey de la Pista"
+              placeholder="Título de la misión o reto"
             />
           </div>
 
@@ -536,7 +536,7 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-yellow resize-none h-24"
-              placeholder="Explica la mecánica del reto..."
+              placeholder="Descripción y requisitos para validar el reto..."
             />
           </div>
 
@@ -548,7 +548,7 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
               min={1}
               value={reward}
               onChange={setReward}
-              placeholder="1000"
+              placeholder="200"
               icon="💰"
               className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-yellow focus:outline-none focus:border-dracula-yellow"
             />

@@ -59,7 +59,7 @@ export default function LoginPage() {
               autoComplete="username"
               required
               className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-300"
-              placeholder="Tu nombre de jugador"
+              placeholder="Nombre de usuario"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
@@ -85,7 +85,7 @@ export default function LoginPage() {
             disabled={isSubmitting}
             className={`w-full py-3.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 active:from-violet-500 active:to-indigo-500 lg:hover:from-violet-500 lg:hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transform active:scale-[0.98] lg:hover:scale-[1.02] transition-all duration-300 btn-press ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
-            {isSubmitting ? 'Autenticando...' : 'Entrar al Juego'}
+            {isSubmitting ? 'Iniciando sesión...' : 'Entrar'}
           </button>
         </form>
 

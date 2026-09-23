@@ -165,7 +165,7 @@ export default function TabUsuarios() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest mb-1 px-1">Concepto / Motivo</label>
-                <input type="text" value={modalConcept} onChange={e => setModalConcept(e.target.value)} placeholder="Ej. Premio del sistema" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light outline-none focus:border-dracula-purple transition-colors" />
+                <input type="text" value={modalConcept} onChange={e => setModalConcept(e.target.value)} placeholder="Motivo del ajuste" className="w-full bg-black/50 border border-dracula-gray/20 rounded-xl p-3 text-sm text-dracula-light outline-none focus:border-dracula-purple transition-colors" />
               </div>
             </div>
 
