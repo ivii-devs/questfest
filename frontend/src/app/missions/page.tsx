@@ -351,6 +351,9 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Determina si el usuario ha aportado al menos una evidencia válida
+  const hasProof = Boolean(file || proofText.trim());
+
   // Manejo de carga de archivo local con previsualización reactiva
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -360,8 +363,20 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
     }
   };
 
+  const handleClearFile = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFile(null);
+    setPreviewUrl(null);
+  };
+
   // Envío multipart/form-data a Cloudinary y registro de finalización
   const handleSubmit = async () => {
+    if (!hasProof) {
+      toast.error('Debes aportar al menos una prueba: una foto/vídeo o un texto explicativo.');
+      return;
+    }
+
     setUploading(true);
     try {
       let secureUrl = null;
@@ -375,7 +390,7 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
       }
 
       await api.post(`/api/misiones/${mission.id}/complete`, {
-        proof_text: proofText,
+        proof_text: proofText.trim() || undefined,
         proof_image_url: secureUrl
       });
       toast.success('Pruebas enviadas al Tribunal (Administrador) para su validación.');
@@ -415,28 +430,41 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
 
           <label className="w-full h-28 bg-dracula-card border-2 border-dashed border-dracula-gray/30 rounded-xl flex flex-col items-center justify-center text-dracula-gray hover:border-dracula-green hover:text-dracula-green transition-all group cursor-pointer relative overflow-hidden">
             {previewUrl ? (
-               file?.type.startsWith('video/') ? (
-                 <video src={previewUrl} controls className="w-full h-full object-contain" />
-               ) : (
-                 <img src={previewUrl} alt="Preview" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
-               )
+              <>
+                {file?.type.startsWith('video/') ? (
+                  <video src={previewUrl} controls className="w-full h-full object-contain" />
+                ) : (
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+                )}
+                <button
+                  type="button"
+                  onClick={handleClearFile}
+                  className="absolute top-2 right-2 p-1 bg-dracula-base/80 text-dracula-red rounded-full hover:bg-dracula-red hover:text-white transition-colors z-20"
+                  title="Eliminar archivo seleccionado"
+                >
+                  <X size={16} />
+                </button>
+              </>
             ) : (
               <>
                 <ImageIcon size={28} className="mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold mt-1">Adjuntar Foto / Video</span>
+                <span className="text-xs font-bold mt-1">Adjuntar Foto / Video (Opcional)</span>
               </>
             )}
             <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-dracula-gray">Mensaje para el Tribunal (Opcional)</label>
+            <label className="text-[10px] font-bold uppercase text-dracula-gray">Mensaje para el Tribunal (Opcional si adjuntas multimedia)</label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
               className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-green resize-none h-20"
               placeholder="Detalles sobre cómo completaste la prueba..."
             />
+            <span className="text-[10px] text-dracula-gray italic">
+              * Aporta al menos una prueba: una foto/vídeo o una justificación explicativa.
+            </span>
           </div>
         </div>
 
@@ -444,7 +472,7 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
           <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-xs text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 disabled:opacity-50 btn-press" disabled={uploading}>
             Cancelar
           </button>
-          <button onClick={handleSubmit} disabled={uploading || !proofText.trim()} className="flex-[2] py-3 rounded-xl font-bold text-xs bg-dracula-green text-dracula-base hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed btn-press">
+          <button onClick={handleSubmit} disabled={uploading || !hasProof} className="flex-[2] py-3 rounded-xl font-bold text-xs bg-dracula-green text-dracula-base hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed btn-press">
             {uploading ? <span className="animate-pulse">Enviando...</span> : <><Send size={16} /> Enviar Pruebas</>}
           </button>
         </div>
