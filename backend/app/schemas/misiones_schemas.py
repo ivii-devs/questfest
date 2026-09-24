@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, HttpUrl
+from pydantic import BaseModel, Field, ConfigDict, HttpUrl, model_validator
 from enum import Enum
 from typing import List, Optional
 
@@ -24,8 +24,29 @@ class VoteProposalRequest(BaseModel):
     vote_type: VoteTypeEnum
 
 class CompleteMissionRequest(BaseModel):
+    """
+    Solicitud de validación y reclamación de recompensa de una misión.
+    
+    Regla de Integridad de Pruebas:
+    La prueba gráfica ('proof_image_url') es estrictamente opcional. El participante
+    puede acreditar la hazaña mediante un enlace multimedia (foto/video alojado en Cloudinary),
+    o mediante una justificación por escrito en 'proof_text', o aportando ambos elementos.
+    Sin embargo, no se permite un envío con ambos campos nulos o vacíos.
+    """
     proof_text: Optional[str] = Field(None, max_length=500, description="Mensaje explicativo para el Tribunal")
     proof_image_url: Optional[HttpUrl] = Field(None, description="URL de la imagen/video adjunto")
+
+    @model_validator(mode="after")
+    def validate_at_least_one_proof(self) -> "CompleteMissionRequest":
+        # Verificamos si existe texto no vacío (eliminando espacios en blanco superfluos)
+        has_text = bool(self.proof_text and self.proof_text.strip())
+        has_image = bool(self.proof_image_url)
+
+        if not has_text and not has_image:
+            raise ValueError(
+                "Debes proporcionar al menos una prueba: una justificación en texto o un archivo multimedia (foto/vídeo)."
+            )
+        return self
 
 class MissionResponse(BaseModel):
     id: str

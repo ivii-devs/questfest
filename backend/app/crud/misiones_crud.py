@@ -266,11 +266,12 @@ async def submit_mission_proof(db: AsyncSession, mission_id: int, user_id: int, 
     # Crear prueba (requerirá validación del Admin)
     # Parseamos la URL asegurándonos que se guarda como string si existe
     img_url = str(request.proof_image_url) if request.proof_image_url else None
+    clean_text = request.proof_text.strip() if request.proof_text else None
     
     prueba = PruebaMision(
         mision_id=mission_id,
         usuario_id=user_id,
-        prueba_texto=request.proof_text,
+        prueba_texto=clean_text,
         prueba_imagen_url=img_url,
         estado="pending"
     )
