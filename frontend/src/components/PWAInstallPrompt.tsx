@@ -75,7 +75,7 @@ export default function PWAInstallPrompt() {
           >
             <Download size={14} /> Instalar
           </button>
-          <button onClick={handleDismiss} className="text-dracula-gray p-1 hover:text-dracula-light">
+          <button onClick={handleDismiss} aria-label="Cerrar aviso de instalación" className="text-dracula-gray p-1 hover:text-dracula-light">
             <X size={16} />
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function PWAInstallPrompt() {
             <Share size={16} className="text-dracula-cyan" />
             <span className="text-xs font-bold text-dracula-light">Instalar en tu iPhone</span>
           </div>
-          <button onClick={handleDismiss} className="text-dracula-gray p-1 hover:text-dracula-light">
+          <button onClick={handleDismiss} aria-label="Cerrar aviso de instalación" className="text-dracula-gray p-1 hover:text-dracula-light">
             <X size={16} />
           </button>
         </div>

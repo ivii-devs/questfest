@@ -11,6 +11,9 @@ export default defineConfig({
   // Directorio raíz donde residen las especificaciones de prueba E2E
   testDir: './e2e',
 
+  // Tiempo límite por test extendido a 60s para acomodar flujos multi-actor con base de datos remota
+  timeout: 60000,
+
   // Ejecución paralela completa para optimizar tiempos en suites grandes
   fullyParallel: true,
 
@@ -20,8 +23,8 @@ export default defineConfig({
   // Reintentos automáticos en caso de inconsistencia de red transitoria
   retries: process.env.CI ? 2 : 1,
 
-  // Limitar workers en CI para evitar sobrecargar la base de datos o el pool de FastAPI
-  workers: process.env.CI ? 1 : undefined,
+  // Limitar a 1 worker secuencial para asegurar aislamiento determinista y no saturar el servidor local
+  workers: 1,
 
   // Reportería multi-canal: reporte HTML para visualización humana y JSON para análisis programático
   reporter: [
