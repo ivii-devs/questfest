@@ -59,12 +59,16 @@ flowchart TD
 - **Fundamento Técnico**: Las pruebas triviales ("crear usuario y recibir 201") son cosméticas y ocultan el 90% de los defectos en producción (deadlocks, desincronización de saldos, fugas de permisos entre grupos).
 - **Directiva Obligatoria**: Todo escenario E2E de verificación debe ser de dificultad media a alta, debiendo satisfacer obligatoriamente al menos **3 de los siguientes 4 criterios**:
 
-| Dimensión | Requisito Mínimo | Ejemplo en QuestFest |
+| Dimensión | Requisito Mínimo | Ejemplo Funcional en QuestFest |
 | :--- | :--- | :--- |
-| **1. Multi-Actor** | Mínimo 2 usuarios independientes interactuando concurrentemente | Creador de Grupo abre la peña; Jugador se une con código y clave. |
+| **1. Multi-Actor** | Mínimo 2 usuarios independientes interactuando concurrentemente | `Usuario_Admin` registra `Grupo_Protegido`; `Usuario_Miembro` se une con código y credencial. |
 | **2. Mutación Contable en Ledger** | Modificación y verificación atómica de QuestCoins | Asignación inicial de saldo, apuesta o recompensa con auditoría en `LedgerTransaccion`. |
 | **3. Inyección de Fallos y Resiliencia** | Acción ilegal deliberada durante el flujo con rechazo limpio | Intento de unirse con clave errónea o transferir sin saldo suficiente; verificar error 400/401 y no corrupción contable posterior. |
 | **4. Transición Multi-Estado** | Cadena de al menos 3 estados consecutivos en el ciclo de vida | Misión creada -> Misión aceptada -> Progreso validado -> Misión reclamada. |
+
+> [!IMPORTANT]
+> **Nomenclatura Estrictamente Funcional (Cero Nombres Anecdóticos)**:
+> Queda terminantemente prohibido utilizar nombres informales, cómicos, folclóricos o anecdóticos (como "Peña El Chupinazo", "fiesta_secreta", "usuario_pobre", etc.) en datos de prueba, fixtures, planes o aserciones. Toda entidad sintética debe nombrarse según su rol técnico o de negocio (`Grupo_E2E_[Timestamp]`, `Usuario_Admin`, `Usuario_Miembro_A`, `Password_Valido_123`, `Password_Invalido_456`, `Mision_Verificacion_Ledger`).
 
 ---
 

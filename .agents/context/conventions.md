@@ -45,3 +45,23 @@
 6. **Valor Real sin Sobrecargar (Noise vs. Value)**:
    - Prohíbese comentar asignaciones triviales o importaciones obvias.
    - Concentra los comentarios en lógica de negocio, hooks personalizados, endpoints, middleware y algoritmos de cálculo.
+
+---
+
+## 3. Nomenclatura Funcional y Semántica en Pruebas, Planes y Documentación
+
+> [!IMPORTANT]
+> **Prohibición de Nombres Anecdóticos o Coloquiales**:
+> Queda terminantemente prohibido utilizar nombres folclóricos, coloquiales, anecdóticos o de humor (como "Peña El Chupinazo", "Peña El Cohete", "fiesta_secreta_123", "usuario_pobre", etc.) en planes de implementación, datos sintéticos de prueba, fixtures, especificaciones E2E o documentación técnica.
+
+### Reglas de Nomenclatura Obligatorias:
+1. **Nombres Funcionales y Semánticos**: Emplea siempre identificadores que describan explícitamente el rol, la entidad y la condición técnica evaluada.
+   - ❌ *Incorrecto*: `Peña El Chupinazo`
+   - ✅ *Correcto*: `Grupo_E2E_Protegido_A` o `Grupo_Verificacion_Multitenant`
+   - ❌ *Incorrecto*: `clave_secreta_fiesta`
+   - ✅ *Correcto*: `Password_Acceso_Valido_123` / `Password_Acceso_Invalido_456`
+   - ❌ *Incorrecto*: `el_fundador`, `poor_user`, `fiestero_loco`
+   - ✅ *Correcto*: `Usuario_Admin_Grupo`, `Usuario_Miembro_A`, `Usuario_Miembro_B`
+   - ❌ *Incorrecto*: `Reto del Chupito`
+   - ✅ *Correcto*: `Mision_Verificacion_Ledger_100QC`
+2. **Generación Dinámica con Prefijos**: En pruebas automatizadas contra base de datos, utiliza prefijos semánticos combinados con timestamps o hashes para evitar colisiones: `e2e_admin_${Date.now()}`, `e2e_player_a_${Date.now()}`.

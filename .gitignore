@@ -71,13 +71,14 @@ build/
 frontend/build/
 dist/
 
-# Temporales, trazas y reportes de Playwright (¡NO SUBIR A GIT!)
+# Temporales, trazas y reportes de pruebas (¡NO SUBIR A GIT!)
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 frontend/.playwright/
 test-results/
 playwright-report/
+reports/
 
 # Metadatos y diagnósticos de TypeScript
 *.tsbuildinfo
