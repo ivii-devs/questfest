@@ -35,12 +35,16 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 - Redacta comentarios explicativos en español como si un desarrollador senior le estuviera explicando el código a un compañero en vivo.
 - Explica siempre el **"por qué"** (intención de negocio, trampas técnicas de Safari/PWA, efectos secundarios, compromisos de diseño _trade-offs_), nunca el "qué" evidente o sintáctico.
 
-### 3. Pruebas de Calidad (Quality Gate)
+### 3. Pruebas de Calidad (Quality Gate E2E-First)
 
-- **Fuente**: [workflows/feature-lifecycle.md](workflows/feature-lifecycle.md).
+- **Fuentes**: [context/testing-standards.md](context/testing-standards.md) y [workflows/feature-lifecycle.md](workflows/feature-lifecycle.md).
 - Aplica tipado estricto en TypeScript (`strict: true`) y Python (type hints y esquemas Pydantic v2).
-- Diseña y ejecuta suites de tests automatizados (`pytest`, fixtures con `httpx`, tests de frontend o verificación de build/lint) **exclusivamente tras realizar modificaciones efectivas de código**.
-- Cero tolerancia a asunciones no demostradas o código no testeado en entregas con cambios de lógica: valida empíricamente los resultados antes de dar por concluida la implementación.
+- **Modelo E2E en dos niveles**: Valida flujos de interfaz y Mobile-First PWA con Playwright (`npm run test:e2e`), y contratos API REST, integridad del Ledger y persistencia con `pytest` y `httpx.AsyncClient`.
+- **Cero pruebas unitarias post-hoc**: Prohibido crear tests unitarios sintéticos tras codificar. La verificación sobre código existente se efectúa siempre en los límites del sistema mediante pruebas E2E.
+- **Aislamiento con Pre-Mortem Adversarial**: Si se prueba un componente en aislamiento, se escribe PRIMERO la Matriz de Modos de Fallo, se codifican los tests de fallo y DESPUÉS se implementa el código.
+- **Escenarios de Dificultad Media-Alta**: Todo escenario E2E debe abarcar al menos 3 de los 4 ejes obligatorios (Multi-actor, Mutación contable en Ledger, Inyección de fallos y resiliencia, Transición multi-estado).
+- **Erradicación de pruebas perjudiciales**: Prohibidas las pruebas tautológicas y las pruebas detectoras de cambios (change-detectors). Los bugs se corrigen cubriendo brechas conductuales, sin micro-regresiones cosméticas.
+- **Artefacto Verificable y Reproducible**: Toda verificación E2E concluye con la generación de un artefacto formal con trazas, deltas de Ledger auditados y comando determinista de reejecución.
 - **Ámbito de exclusión**: Queda expresamente exento de ejecutar tests o builds cualquier requerimiento de solo análisis, investigación, redacción de planes de implementación, consultas técnicas o ediciones meramente documentales/markdown, a menos que el usuario lo solicite expresamente.
 
 ### 4. Pruebas y Auditoría de Seguridad (Zero-Trust & Ledger Inmutable)
@@ -102,3 +106,6 @@ Toda petición de trabajo sigue el ciclo unificado de 5 fases definido en [workf
 5. **PROHIBIDO** alterar balances de QuestCoins sin entrada atómica en `LedgerTransaccion` o permitir que el cliente calcule resultados de juego ([context/security.md](context/security.md)).
 6. **PROHIBIDO** insertar rutas locales absolutas de disco (`C:\...`, `file:///...`) en archivos de configuración o documentación. Emplea exclusivamente rutas relativas portables.
 7. **PROHIBIDO** ejecutar suites de pruebas (`pytest`, `npm test`) o compilaciones (`npm run build`) durante fases de análisis técnico, diseño, redacción de planes de implementación, respuestas a dudas o tareas puramente documentales, salvo indicación explícita del usuario.
+8. **PROHIBIDO** escribir pruebas unitarias después de escribir el código o diseñar pruebas E2E triviales de baja complejidad ("camino feliz" de juguete) para certificar funcionalidades complejas ([context/testing-standards.md](context/testing-standards.md)).
+9. **PROHIBIDO** incorporar pruebas tautológicas o detectoras de cambios (change-detectors) acopladas a la estructura interna o llamadas privadas de funciones ([context/testing-standards.md](context/testing-standards.md)).
+10. **PROHIBIDO** dar por concluida una suite de verificación E2E sin generar el artefacto verificable y reproducible con comando determinista de reejecución ([context/testing-standards.md](context/testing-standards.md)).

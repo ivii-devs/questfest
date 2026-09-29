@@ -42,16 +42,20 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
   - Incluye obligatoriamente comentarios explicativos en español estilo Pair Programming justificando el "por qué", las reglas de negocio y los posibles compromisos técnicos ([context/conventions.md](../context/conventions.md)).
   - Si afecta a la interfaz de usuario, aplica rigurosamente los estándares PWA: enfoque Mobile-First, target táctil $\ge 48\times 48\text{ px}$, safe-area-inset y degradación offline ([context/pwa-standards.md](../context/pwa-standards.md)).
 
-- [ ] **Fase 3: Quality Gate y Auditoría de Seguridad (Zero-Trust)**
+- [ ] **Fase 3: Quality Gate E2E-First y Auditoría de Seguridad (Zero-Trust)**
   - **Condición de activación**: Esta fase se activa **únicamente** tras haber modificado código en Fase 2. Quedan excluidas las consultas, diseños, redacción de planes de implementación o modificaciones exclusivas de documentación.
-  - Ejecuta validaciones de compilación y tipado (`npm run lint`, `npm run build` en frontend).
-  - Diseña y corre la suite de pruebas automatizadas en backend empleando el entorno virtual del proyecto (`.\venv\Scripts\pytest tests/ -v` desde `backend/`).
-  - Audita el cumplimiento de seguridad ([context/security.md](../context/security.md)):
+  - **Directiva E2E-First**: Prohibidas las pruebas unitarias post-hoc, tautológicas o detectoras de cambios. Consulta el estándar canónico en [context/testing-standards.md](../context/testing-standards.md).
+  - **Ejecución del Modelo Dual E2E**:
+    - **Frontend & PWA (Playwright)**: Ejecuta `npm run test:e2e` desde `frontend/` para verificar interfaces Mobile-First (`Pixel 7`, `iPhone 15`), áreas táctiles $\ge 48\times 48\text{ px}$, degradación offline y escenarios multi-actor con sesiones aisladas.
+    - **Backend & Ledger (Pytest + HTTPX)**: Ejecuta `.\venv\Scripts\pytest tests/ -v` desde `backend/` para validar contratos REST, persistencia real, transacciones atómicas y bloqueos pesimistas (`.with_for_update()`).
+  - **Rúbrica de Complejidad Obligatoria**: Los escenarios E2E deben ser de dificultad media-alta (cubrir mínimo 3 de los 4 ejes: multi-actor, mutación en Ledger, inyección de fallos/resiliencia y transición multi-estado).
+  - **Aislamiento Condicionado**: Si un algoritmo requiere aislamiento, valida que se haya documentado la *Matriz de Modos de Fallo Pre-Mortem* antes de codificar.
+  - **Auditoría de Seguridad y Ledger**:
     - Consultas SQLAlchemy parametrizadas (sin inyección SQL).
     - Protección y validación de endpoints y DTOs con Pydantic v2.
     - Cero fugas contables: verificar que todo movimiento de QuestCoins esté respaldado atómicamente en `LedgerTransaccion`.
-    - Bloqueos pesimistas (`.with_for_update()`) en operaciones concurrentes para prevenir condiciones de carrera.
     - Soberanía absoluta del backend en azar y recompensas.
+  - **Artefacto Verificable y Reproducible**: Al finalizar las pruebas, genera y documenta el reporte formal con trazas, estado de Ledger verificado y comando determinista de reproducción.
   - **Criterio de Aprobación**: Si algún test falla o se detecta una vulnerabilidad, se corrigen los defectos en Fase 2 antes de avanzar.
 
 - [ ] **Fase 4: Sincronización con el Vault de Obsidian**
