@@ -69,11 +69,14 @@ def get_real_client_ip(request: Request) -> str:
 
 
 # Configuración del motor de almacenamiento para SlowAPI
-# Permite conmutar automáticamente a Redis en producción distribuida o memoria en monocontenedor
+# Permite conmutar automáticamente a Redis en producción distribuida o memoria en monocontenedor.
+# Durante la ejecución de suites de pruebas automatizadas (E2E), el limitador se desactiva
+# preventivamente si TESTING=true o RATE_LIMIT_ENABLED=false para garantizar ejecuciones continuas sin falsos 429.
 redis_url = os.getenv("REDIS_URL", None)
+is_rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("true", "1") and os.getenv("TESTING", "").lower() not in ("true", "1")
 
 if redis_url:
-    limiter = Limiter(key_func=get_real_client_ip, storage_uri=redis_url)
+    limiter = Limiter(key_func=get_real_client_ip, storage_uri=redis_url, enabled=is_rate_limit_enabled)
 else:
     # Almacenamiento en memoria RAM local (ideal para tests y desarrollo)
-    limiter = Limiter(key_func=get_real_client_ip)
+    limiter = Limiter(key_func=get_real_client_ip, enabled=is_rate_limit_enabled)

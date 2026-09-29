@@ -1,7 +1,13 @@
 import os
 from typing import AsyncGenerator, Dict, Any
+from dotenv import load_dotenv
 from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+# Cargamos preventivamente las variables del archivo .env local si la variable DATABASE_URL
+# no se encuentra preconfigurada en el entorno del sistema operativo (evitando fallbacks a localhost).
+load_dotenv()
+
 
 def normalize_database_url(url: str) -> str:
     """
@@ -50,7 +56,7 @@ engine_kwargs: Dict[str, Any] = {
 
 # Detección de entornos Serverless (Vercel Functions o AWS Lambda) y Transaction Pooler de Supabase
 is_serverless = bool(os.getenv("VERCEL") or os.getenv("SERVERLESS") or os.getenv("DB_USE_NULLPOOL"))
-is_supabase_pooler = ":6543" in DATABASE_URL or os.getenv("SUPABASE_POOLER", "").lower() in ("true", "1")
+is_supabase_pooler = "pooler.supabase.com" in DATABASE_URL or ":6543" in DATABASE_URL or os.getenv("SUPABASE_POOLER", "").lower() in ("true", "1")
 
 # Configuramos el pool según la infraestructura de ejecución:
 # - En Serverless (Vercel): Usamos 'NullPool' para no retener conexiones inactivas en contenedores
@@ -68,11 +74,14 @@ if not DATABASE_URL.startswith("sqlite"):
         # durante picos repentinos de tráfico concurrente.
         engine_kwargs["max_overflow"] = int(os.getenv("DB_MAX_OVERFLOW", "20"))
 
-    # Cuando nos conectamos al Transaction Pooler de Supabase (puerto 6543 con PgBouncer/Supavisor),
-    # asyncpg debe desactivar la caché de sentencias preparadas para prevenir colisiones
-    # cruzadas ('PreparedStatementDoesNotExistError') entre transacciones compartidas.
+    # Cuando nos conectamos al Transaction/Session Pooler de Supabase, asyncpg debe
+    # desactivar la caché de sentencias preparadas ('statement_cache_size: 0') para prevenir
+    # colisiones cruzadas y exigir cifrado TLS/SSL estricto ('ssl: require').
     if is_supabase_pooler or is_serverless:
-        engine_kwargs["connect_args"] = {"statement_cache_size": 0}
+        engine_kwargs["connect_args"] = {
+            "statement_cache_size": 0,
+            "ssl": "require"
+        }
 
 # Creación del motor asíncrono con la configuración endurecida
 engine = create_async_engine(
