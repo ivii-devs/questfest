@@ -6,6 +6,7 @@ from typing import Optional
 import uuid
 
 from app.models.juegos import Apuesta, TicketApuesta
+from app.models.grupo import MiembroGrupo
 from app.schemas.apuestas_schemas import SuggestBetRequest
 from app.crud.ledger_crud import move_tokens
 
@@ -36,13 +37,19 @@ async def create_apuesta(db: AsyncSession, user_id: int, bet_data: SuggestBetReq
             "multiplier": opt.multiplier
         }
         
+    grupo_id = bet_data.group_id
+    if grupo_id is None:
+        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        res = await db.execute(member_stmt)
+        grupo_id = res.scalar()
+
     db_apuesta = Apuesta(
         titulo=bet_data.title,
         creador_id=user_id,
         opciones=opciones_dict,
         fase="global",
         estado="propuesta",
-        grupo_id=bet_data.group_id
+        grupo_id=grupo_id
     )
     db.add(db_apuesta)
     await db.commit()
@@ -87,6 +94,13 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
     if option_id not in apuesta.opciones:
         raise HTTPException(status_code=400, detail="La opción seleccionada no existe en esta apuesta")
         
+    # Resolver grupo_id para confinamiento estricto a MiembroGrupo
+    target_group_id = apuesta.grupo_id
+    if target_group_id is None:
+        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        res = await db.execute(member_stmt)
+        target_group_id = res.scalar()
+
     # 3. Transacción atómica combinada (Débito en Ledger + Emisión de Ticket)
     try:
         # Inmovilización de tokens en el saldo del grupo correspondiente
@@ -96,7 +110,7 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
             amount=-amount, 
             concept=f"Apuesta colocada en: {apuesta.titulo}",
             auto_commit=False,
-            group_id=apuesta.grupo_id
+            group_id=target_group_id
         )
         
         # Creación del cupón individual
@@ -105,7 +119,7 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
             apuesta_id=apuesta_id,
             opcion_id=option_id,
             cantidad=amount,
-            grupo_id=apuesta.grupo_id
+            grupo_id=target_group_id
         )
         db.add(ticket)
         

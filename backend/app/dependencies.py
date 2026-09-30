@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -93,3 +94,50 @@ async def get_admin_user(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Acceso denegado. Se requieren privilegios de Administrador de grupo o global."
     )
+
+async def verify_group_admin(
+    db: AsyncSession, 
+    user: models.usuario.Usuario, 
+    group_id: Optional[int]
+) -> bool:
+    """
+    Guardián de Jurisdicción Territorial Multi-Tenancy (QuestFest).
+    
+    ¿Por qué este control adicional?
+    'get_admin_user' valida que el usuario sea administrador de AL MENOS una comunidad
+    para permitirle cargar la interfaz del panel de control.
+    Sin embargo, al momento de dictar sentencia (cerrar una apuesta, validar un duelo o
+    aprobar misiones), este guardián certifica que el administrador tenga rango de 'admin'
+    ESPECÍFICAMENTE en el grupo al que pertenece la entidad en litigio.
+    
+    Reglas de Acceso:
+    1. Si 'user.rol == "admin"': Superusuario global de la plataforma (acceso omnisciente concedido).
+    2. Si 'group_id is None': Entidad sin grupo; solo auditable por superadministradores.
+    3. Si el usuario ostenta 'rol == "admin"' en 'miembros_grupo' para ese 'group_id': Acceso concedido.
+    4. En cualquier otro caso: Aborta con HTTP 403 Forbidden para prevenir interferencias entre eventos.
+    """
+    if user.rol == "admin":
+        return True
+
+    if group_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operación restringida: Solo un superadministrador global puede gestionar entidades sin comunidad asignada."
+        )
+
+    from sqlalchemy.future import select
+    from app.models.grupo import MiembroGrupo
+
+    stmt = select(MiembroGrupo).filter(
+        MiembroGrupo.usuario_id == user.id,
+        MiembroGrupo.grupo_id == group_id,
+        MiembroGrupo.rol == "admin"
+    )
+    res = await db.execute(stmt)
+    if not res.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Acceso denegado. No tienes facultades de administración en el grupo {group_id}."
+        )
+
+    return True

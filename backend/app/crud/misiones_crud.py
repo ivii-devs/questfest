@@ -28,6 +28,13 @@ async def suggest_mission(db: AsyncSession, user_id: int, request: SuggestMissio
     Registra una nueva propuesta de misión sugerida por un jugador para su comunidad.
     Nace en estado 'propuesta' para someterse al escrutinio y votación de los miembros.
     """
+    grupo_id = request.group_id
+    if grupo_id is None:
+        from app.models.grupo import MiembroGrupo
+        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        res = await db.execute(member_stmt)
+        grupo_id = res.scalar()
+
     mision = Mision(
         titulo=request.title,
         creador_id=user_id,
@@ -36,7 +43,7 @@ async def suggest_mission(db: AsyncSession, user_id: int, request: SuggestMissio
         fase="global",
         es_ruleta=False,
         estado="propuesta",
-        grupo_id=request.group_id
+        grupo_id=grupo_id
     )
     db.add(mision)
     await db.commit()

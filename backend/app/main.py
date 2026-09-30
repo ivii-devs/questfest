@@ -32,12 +32,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 import logging
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     logging.getLogger("uvicorn.error").error(f"[422 Validation Error] Path: {request.url.path} | Errors: {exc.errors()} | Body: {exc.body}")
-    return JSONResponse(status_code=422, content={"detail": exc.errors()})
+    return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
 
 
 # Inicializar servicios externos (almacenamiento de imágenes y media en la nube)

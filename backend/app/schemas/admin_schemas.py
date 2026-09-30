@@ -5,6 +5,7 @@ from datetime import datetime
 class AnuncioCreate(BaseModel):
     contenido: str
     media_url: Optional[str] = None
+    group_id: Optional[int] = None
 
 class NotificacionCreate(BaseModel):
     titulo: str
@@ -14,6 +15,7 @@ class NotificacionCreate(BaseModel):
     destinatario_tipo: str
     destinatario_id: Optional[int] = None
     config_boletin: Optional[Dict[str, Any]] = None
+    group_id: Optional[int] = None
 
 class NotificacionResponse(BaseModel):
     id: int
@@ -36,12 +38,14 @@ class GlobalStats(BaseModel):
 class UserBalanceUpdate(BaseModel):
     cantidad: int # Positivo para bonificar, Negativo para multar
     concepto: str
+    group_id: Optional[int] = None
 
 class RuletaMisionCreate(BaseModel):
     titulo: str
     descripcion: str
     recompensa: int
     media_url: Optional[str] = None
+    group_id: Optional[int] = None
 
 class AudiencePreviewRequest(BaseModel):
     destinatario_tipo: str

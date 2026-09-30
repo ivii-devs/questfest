@@ -25,13 +25,14 @@ from starlette.concurrency import run_in_threadpool
 import cloudinary.uploader
 
 from app.core.database import get_db
-from app.dependencies import get_admin_user
+from app.dependencies import get_admin_user, verify_group_admin
 from app.services.boletin_service import calculate_summary_stats
 from app.models.usuario import Usuario, LedgerTransaccion
 from app.models.publicaciones import Publicacion
 from app.models.notificaciones import NotificacionAdmin
 from app.models.misiones import Mision, PruebaMision
 from app.models.juegos import TicketApuesta, Duelo, Apuesta
+from app.models.grupo import MiembroGrupo
 from app.schemas.admin_schemas import (
     AnuncioCreate, NotificacionCreate, NotificacionResponse,
     GlobalStats, UserBalanceUpdate, RuletaMisionCreate, AudiencePreviewRequest,
@@ -77,18 +78,27 @@ async def upload_media(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error subiendo archivo a Cloudinary: {str(e)}")
 
 @router.post("/announcements")
-async def create_announcement(anuncio: AnuncioCreate, db: AsyncSession = Depends(get_db)):
+async def create_announcement(
+    anuncio: AnuncioCreate, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Publica un anuncio institucional en el Muro Social.
+    Si se indica group_id, verifica la jurisdicción del administrador para ese grupo.
     
     Se marca con `es_sistema=True` para que el frontend le dé un tratamiento visual
     destacado (borde dorado, distintivo oficial, no editable por jugadores).
     """
+    if anuncio.group_id is not None:
+        await verify_group_admin(db, current_user, anuncio.group_id)
+
     pub = Publicacion(
         tipo="social",
         es_sistema=True,
         contenido=anuncio.contenido,
-        media_url=anuncio.media_url
+        media_url=anuncio.media_url,
+        grupo_id=anuncio.group_id
     )
     db.add(pub)
     await db.commit()
@@ -99,14 +109,22 @@ async def create_announcement(anuncio: AnuncioCreate, db: AsyncSession = Depends
 # --------------------------------------------------------------------------
 
 @router.post("/notifications", response_model=NotificacionResponse)
-async def create_notification(notif: NotificacionCreate, db: AsyncSession = Depends(get_db)):
+async def create_notification(
+    notif: NotificacionCreate, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Emite o programa una notificación dirigida a una audiencia determinada.
+    Si se especifica group_id, certifica que el administrador tenga jurisdicción territorial.
     
     Si `fecha_programada` está en el futuro, el estado inicial es 'pending'
     para que un cron o worker en segundo plano la despache en su momento. Si no,
     se marca inmediatamente como 'sent'.
     """
+    if notif.group_id is not None:
+        await verify_group_admin(db, current_user, notif.group_id)
+
     nueva = NotificacionAdmin(
         titulo=notif.titulo,
         mensaje=notif.mensaje,
@@ -162,20 +180,92 @@ async def list_notifications(db: AsyncSession = Depends(get_db)):
 # --------------------------------------------------------------------------
 
 @router.get("/users/stats", response_model=GlobalStats)
-async def get_global_stats(db: AsyncSession = Depends(get_db)):
+async def get_global_stats(
+    group_id: Optional[int] = Query(None),
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Devuelve métricas macroeconómicas del juego:
     - Número total de participantes registrados.
-    - Masa monetaria global en circulación (suma de tokens en cuentas).
+    - Masa monetaria global en circulación.
+    Si se especifica group_id, devuelve las métricas confinadas a dicha comunidad.
     """
+    if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
+        total_users = await db.scalar(
+            select(func.count(MiembroGrupo.id)).where(MiembroGrupo.grupo_id == group_id)
+        )
+        total_tokens = await db.scalar(
+            select(func.sum(MiembroGrupo.saldo_grupo)).where(MiembroGrupo.grupo_id == group_id)
+        )
+        return GlobalStats(total_users=total_users or 0, total_tokens=total_tokens or 0)
+
+    if current_user.rol != "admin":
+        admin_groups_subq = select(MiembroGrupo.grupo_id).where(
+            MiembroGrupo.usuario_id == current_user.id,
+            MiembroGrupo.rol == "admin"
+        )
+        total_users = await db.scalar(
+            select(func.count(func.distinct(MiembroGrupo.usuario_id))).where(MiembroGrupo.grupo_id.in_(admin_groups_subq))
+        )
+        total_tokens = await db.scalar(
+            select(func.sum(MiembroGrupo.saldo_grupo)).where(MiembroGrupo.grupo_id.in_(admin_groups_subq))
+        )
+        return GlobalStats(total_users=total_users or 0, total_tokens=total_tokens or 0)
+
     total_users = await db.scalar(select(func.count(Usuario.id)))
     total_tokens = await db.scalar(select(func.sum(Usuario.saldo_actual)))
     return GlobalStats(total_users=total_users or 0, total_tokens=total_tokens or 0)
 
 @router.get("/users", response_model=List[UserResponse])
-async def list_users(db: AsyncSession = Depends(get_db)):
-    """Lista completa de usuarios para el panel de administración, ordenados alfabéticamente."""
-    result = await db.execute(select(Usuario).order_by(Usuario.username))
+async def list_users(
+    group_id: Optional[int] = Query(None),
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Lista de usuarios para el panel de administración.
+    Si se especifica group_id, confina los usuarios a los miembros de ese grupo
+    y refleja el saldo específico de grupo ('saldo_grupo').
+    """
+    if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
+        stmt = (
+            select(Usuario, MiembroGrupo.saldo_grupo)
+            .join(MiembroGrupo, MiembroGrupo.usuario_id == Usuario.id)
+            .where(MiembroGrupo.grupo_id == group_id)
+            .order_by(Usuario.username)
+        )
+        res = await db.execute(stmt)
+        users = []
+        for user_obj, saldo_grupo in res.all():
+            users.append(UserResponse(
+                id=user_obj.id,
+                username=user_obj.username,
+                saldo_actual=saldo_grupo if saldo_grupo is not None else 0,
+                rol=user_obj.rol,
+                bio=user_obj.bio,
+                avatar_url=user_obj.avatar_url
+            ))
+        return users
+
+    if current_user.rol == "admin":
+        result = await db.execute(select(Usuario).order_by(Usuario.username))
+        return result.scalars().all()
+
+    admin_groups_subq = select(MiembroGrupo.grupo_id).where(
+        MiembroGrupo.usuario_id == current_user.id,
+        MiembroGrupo.rol == "admin"
+    )
+    stmt = (
+        select(Usuario)
+        .join(MiembroGrupo, MiembroGrupo.usuario_id == Usuario.id)
+        .where(MiembroGrupo.grupo_id.in_(admin_groups_subq))
+        .distinct()
+        .order_by(Usuario.username)
+    )
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 @router.post("/users/{user_id}/balance", response_model=UserResponse)
@@ -187,66 +277,124 @@ async def update_user_balance(
 ):
     """
     Ajuste manual de saldo ejecutado por un administrador.
-    
-    Reglas críticas de integridad contable:
-    1. El saldo de un usuario no puede quedar por debajo de 0 (se trunca si la resta excediera).
-    2. Todo movimiento manual DEBE reflejarse en el `LedgerTransaccion` con su snapshot `saldo_resultante`.
-    3. Se emite una notificación al usuario para justificar el ajuste en su pantalla.
-    4. Se crea un registro indeleble en la tabla de `AuditLog` para garantizar trazabilidad interna.
+    Si 'update_data.group_id' está definido, valida jurisdicción y actualiza 'MiembroGrupo.saldo_grupo'
+    mediante 'move_tokens', dejando constancia inmutable en el Ledger.
     """
     user = await db.scalar(select(Usuario).where(Usuario.id == user_id))
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    
-    user.saldo_actual += update_data.cantidad
-    if user.saldo_actual < 0:
-        user.saldo_actual = 0
-        
-    # Registro inmutable en el Libro Contable (Ledger)
-    tx = LedgerTransaccion(
-        usuario_id=user.id,
-        cantidad=update_data.cantidad,
-        concepto=update_data.concepto,
-        saldo_resultante=user.saldo_actual
-    )
-    db.add(tx)
-    
-    # Notificación informativa directa al usuario afectado
-    notif = NotificacionAdmin(
-        titulo="Actualización de Saldo",
-        mensaje=update_data.concepto,
-        destinatario_tipo="specific",
-        destinatario_id=user.id,
-        estado="sent"
-    )
-    db.add(notif)
 
-    # Registro de auditoría administrativa para saber qué admin realizó el cambio y por qué
-    from app.crud.audit_crud import log_admin_action
-    await log_admin_action(
-        db=db,
-        admin_id=admin_user.id,
-        action="update_user_balance",
-        entity="usuario",
-        entity_id=user_id,
-        details={"cantidad": update_data.cantidad, "concepto": update_data.concepto, "saldo_nuevo": user.saldo_actual}
-    )
-    
-    await db.commit()
-    await db.refresh(user)
-    return user
+    target_group_id = update_data.group_id
+    if target_group_id is not None:
+        await verify_group_admin(db, admin_user, target_group_id)
+        from app.crud.ledger_crud import move_tokens
+        await move_tokens(
+            db=db,
+            user_id=user.id,
+            amount=update_data.cantidad,
+            concept=update_data.concepto,
+            group_id=target_group_id,
+            auto_commit=False
+        )
+
+        notif = NotificacionAdmin(
+            titulo="Actualización de Saldo",
+            mensaje=update_data.concepto,
+            destinatario_tipo="specific",
+            destinatario_id=user.id,
+            estado="sent"
+        )
+        db.add(notif)
+
+        from app.crud.audit_crud import log_admin_action
+        await log_admin_action(
+            db=db,
+            admin_id=admin_user.id,
+            action="update_user_balance",
+            entity="usuario",
+            entity_id=user_id,
+            details={"cantidad": update_data.cantidad, "concepto": update_data.concepto, "grupo_id": target_group_id}
+        )
+        await db.commit()
+
+        res_miembro = await db.scalar(select(MiembroGrupo.saldo_grupo).where(
+            MiembroGrupo.usuario_id == user.id,
+            MiembroGrupo.grupo_id == target_group_id
+        ))
+        return UserResponse(
+            id=user.id,
+            username=user.username,
+            saldo_actual=res_miembro if res_miembro is not None else 0,
+            rol=user.rol,
+            bio=user.bio,
+            avatar_url=user.avatar_url
+        )
+    else:
+        if admin_user.rol != "admin":
+            raise HTTPException(
+                status_code=403,
+                detail="Se requiere especificar el grupo para actualizar el saldo del usuario."
+            )
+        user.saldo_actual += update_data.cantidad
+        if user.saldo_actual < 0:
+            user.saldo_actual = 0
+            
+        tx = LedgerTransaccion(
+            usuario_id=user.id,
+            cantidad=update_data.cantidad,
+            concepto=update_data.concepto,
+            saldo_resultante=user.saldo_actual
+        )
+        db.add(tx)
+        
+        notif = NotificacionAdmin(
+            titulo="Actualización de Saldo",
+            mensaje=update_data.concepto,
+            destinatario_tipo="specific",
+            destinatario_id=user.id,
+            estado="sent"
+        )
+        db.add(notif)
+
+        from app.crud.audit_crud import log_admin_action
+        await log_admin_action(
+            db=db,
+            admin_id=admin_user.id,
+            action="update_user_balance",
+            entity="usuario",
+            entity_id=user_id,
+            details={"cantidad": update_data.cantidad, "concepto": update_data.concepto, "saldo_nuevo": user.saldo_actual}
+        )
+        
+        await db.commit()
+        await db.refresh(user)
+        return user
 
 @router.get("/users/{user_id}/transactions", response_model=List[TransactionResponse])
-async def get_user_transactions(user_id: int, db: AsyncSession = Depends(get_db)):
+async def get_user_transactions(
+    user_id: int, 
+    group_id: Optional[int] = Query(None),
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Historial completo de movimientos contables de un usuario concreto.
-    Permite al administrador auditar fraudes, recargas o devoluciones.
+    Soporta filtrado contextual por 'group_id' para auditar la economía del grupo activo.
     """
-    result = await db.execute(
-        select(LedgerTransaccion)
-        .where(LedgerTransaccion.usuario_id == user_id)
-        .order_by(LedgerTransaccion.fecha_creacion.desc())
-    )
+    if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
+        stmt = (
+            select(LedgerTransaccion)
+            .where((LedgerTransaccion.usuario_id == user_id) & (LedgerTransaccion.grupo_id == group_id))
+            .order_by(LedgerTransaccion.fecha_creacion.desc())
+        )
+    else:
+        stmt = (
+            select(LedgerTransaccion)
+            .where(LedgerTransaccion.usuario_id == user_id)
+            .order_by(LedgerTransaccion.fecha_creacion.desc())
+        )
+    result = await db.execute(stmt)
     transactions = result.scalars().all()
     response = []
     for tx in transactions:
@@ -265,17 +413,27 @@ async def get_user_transactions(user_id: int, db: AsyncSession = Depends(get_db)
 # --------------------------------------------------------------------------
 
 @router.post("/roulette", response_model=dict)
-async def create_roulette_mission(mision: RuletaMisionCreate, current_user: Usuario = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+async def create_roulette_mission(
+    mision: RuletaMisionCreate, 
+    current_user: Usuario = Depends(get_admin_user), 
+    db: AsyncSession = Depends(get_db)
+):
     """
     Crea una misión exclusiva para el bombo de la Ruleta Diaria.
     Nace con `es_ruleta=True` y en fase 'activa' para estar disponible en los sorteos.
+    Si se suministra group_id, queda asignada a dicho grupo.
     """
+    if mision.group_id is not None:
+        await verify_group_admin(db, current_user, mision.group_id)
+
     nueva_mision = Mision(
         titulo=mision.titulo,
         descripcion=mision.descripcion,
         recompensa=mision.recompensa,
         creador_id=current_user.id,
-        fase="activa",
+        grupo_id=mision.group_id,
+        fase="global",
+        estado="activa",
         es_ruleta=True,
         media_url=mision.media_url
     )
@@ -299,17 +457,24 @@ async def get_summary_stats(
 # --------------------------------------------------------------------------
 
 @router.put("/bets/{bet_id}")
-async def edit_suggested_bet(bet_id: int, edit_data: AdminEditBetRequest, db: AsyncSession = Depends(get_db)):
+async def edit_suggested_bet(
+    bet_id: int, 
+    edit_data: AdminEditBetRequest, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Permite al administrador corregir el texto o reajustar los multiplicadores
     de una apuesta propuesta por un jugador antes de abrirla al público general.
-    Solo se permite en estado 'propuesta'.
+    Solo se permite en estado 'propuesta' y si el admin tiene jurisdicción sobre el grupo.
     """
     result = await db.execute(select(Apuesta).where(Apuesta.id == bet_id))
     bet = result.scalars().first()
     if not bet:
         raise HTTPException(status_code=404, detail="Apuesta no encontrada")
         
+    await verify_group_admin(db, current_user, bet.grupo_id)
+
     if bet.estado != 'propuesta':
         raise HTTPException(status_code=400, detail="Solo se pueden editar apuestas en estado propuesta")
         
@@ -330,7 +495,12 @@ async def edit_suggested_bet(bet_id: int, edit_data: AdminEditBetRequest, db: As
     return {"message": "Apuesta actualizada exitosamente"}
 
 @router.patch("/bets/{bet_id}/status")
-async def update_bet_status(bet_id: int, update_data: BetStatusUpdate, db: AsyncSession = Depends(get_db)):
+async def update_bet_status(
+    bet_id: int, 
+    update_data: BetStatusUpdate, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Transición de estados del mercado de apuestas:
     - 'abierta': Pone la apuesta a disposición de los usuarios y sella `fecha_aprobacion`.
@@ -338,15 +508,18 @@ async def update_bet_status(bet_id: int, update_data: BetStatusUpdate, db: Async
     - 'cerrada': Dictamina la opción ganadora y liquida los premios.
     
     Mecánica de liquidación:
-    1. Busca todos los tickets que apostaron por `opcion_ganadora_id`.
-    2. Calcula `ganancia = ticket.cantidad * multiplicador`.
-    3. Invoca `move_tokens` con `auto_commit=False` para aislar los abonos dentro del saldo del grupo de la apuesta.
-    4. Realiza un `commit` atómico único al final: si ocurre un fallo no hay pagos parciales inconsistentes.
+    1. Certifica la jurisdicción del administrador sobre la comunidad de la apuesta.
+    2. Busca todos los tickets que apostaron por `opcion_ganadora_id`.
+    3. Calcula `ganancia = ticket.cantidad * multiplicador`.
+    4. Invoca `move_tokens` con `auto_commit=False` para aislar los abonos dentro del saldo del grupo de la apuesta.
+    5. Realiza un `commit` atómico único al final.
     """
     result = await db.execute(select(Apuesta).where(Apuesta.id == bet_id))
     bet = result.scalars().first()
     if not bet:
         raise HTTPException(status_code=404, detail="Apuesta no encontrada")
+
+    await verify_group_admin(db, current_user, bet.grupo_id)
         
     if update_data.estado == "abierta":
         from sqlalchemy.sql import func
@@ -385,13 +558,18 @@ async def update_bet_status(bet_id: int, update_data: BetStatusUpdate, db: Async
             if user:
                 from app.crud.ledger_crud import move_tokens
                 ganancia = int(ticket.cantidad * float(multiplier))
+                target_group_id = bet.grupo_id or ticket.grupo_id
+                if target_group_id is None:
+                    member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user.id).limit(1)
+                    res = await db.execute(member_stmt)
+                    target_group_id = res.scalar()
                 # Abonamos los tokens con auto_commit=False para mantener atomicidad
                 await move_tokens(
                     db=db, 
                     user_id=user.id, 
                     amount=ganancia, 
                     concept=f"Premio de apuesta: {bet.titulo}", 
-                    group_id=bet.grupo_id,
+                    group_id=target_group_id,
                     auto_commit=False
                 )
                 
@@ -400,50 +578,32 @@ async def update_bet_status(bet_id: int, update_data: BetStatusUpdate, db: Async
         
     raise HTTPException(status_code=400, detail="Estado no válido")
 
-@router.get("/duels")
-async def get_admin_duels(group_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
-    """
-    Obtiene los duelos para el tribunal administrativo, filtrados opcionalmente por grupo.
-    """
-    from sqlalchemy.orm import selectinload
-    stmt = select(Duelo).options(selectinload(Duelo.retador), selectinload(Duelo.retado))
-    if group_id is not None:
-        stmt = stmt.where(Duelo.grupo_id == group_id)
-    stmt = stmt.order_by(Duelo.id.desc())
-    result = await db.execute(stmt)
-    duels = result.scalars().all()
-    return [
-        {
-            "id": d.id,
-            "challenger": d.retador.username,
-            "challenged": d.retado.username,
-            "game": d.juego,
-            "wager": d.tokens_en_juego,
-            "status": d.estado,
-            "winner": d.retador.username if d.ganador_id == d.retador_id else (d.retado.username if d.ganador_id == d.retado_id else None),
-            "challenger_avatar": d.retador.avatar_url,
-            "challenged_avatar": d.retado.avatar_url,
-            "fecha_creacion": d.fecha_creacion.isoformat() + "Z" if d.fecha_creacion else None,
-            "reported_resolution": d.reported_resolution
-        }
-        for d in duels
-    ]
-
 # --------------------------------------------------------------------------
 # 6. TRIBUNAL ADMINISTRATIVO DE DUELOS
 # --------------------------------------------------------------------------
 
 @router.get("/duels")
-async def get_admin_duels(group_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+async def get_admin_duels(
+    group_id: Optional[int] = Query(None), 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Obtiene los duelos para el panel del Tribunal Administrativo.
     Carga de forma eager los perfiles de retador y retado para no disparar consultas N+1.
-    Soporta filtrado opcional por `group_id` para administradores locales.
+    Soporta filtrado obligatorio por `group_id` para administradores locales.
     """
     from sqlalchemy.orm import selectinload
     stmt = select(Duelo).options(selectinload(Duelo.retador), selectinload(Duelo.retado))
     if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
         stmt = stmt.where(Duelo.grupo_id == group_id)
+    elif current_user.rol != "admin":
+        admin_groups_subq = select(MiembroGrupo.grupo_id).where(
+            MiembroGrupo.usuario_id == current_user.id,
+            MiembroGrupo.rol == "admin"
+        )
+        stmt = stmt.where(Duelo.grupo_id.in_(admin_groups_subq))
     stmt = stmt.order_by(Duelo.id.desc())
     result = await db.execute(stmt)
     duels = result.scalars().all()
@@ -465,9 +625,15 @@ async def get_admin_duels(group_id: Optional[int] = None, db: AsyncSession = Dep
     ]
 
 @router.patch("/duels/{duel_id}/resolve")
-async def resolve_duel_admin(duel_id: int, resolve_data: AdminResolveDuelRequest, db: AsyncSession = Depends(get_db)):
+async def resolve_duel_admin(
+    duel_id: int, 
+    resolve_data: AdminResolveDuelRequest, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Dicta sentencia inapelable sobre un duelo en conflicto o pendiente de arbitraje.
+    Certifica la jurisdicción territorial del juez antes de ejecutar movimientos económicos.
     
     Casos contemplados:
     A. Victoria limpia ("challenger" o "challenged"):
@@ -488,6 +654,8 @@ async def resolve_duel_admin(duel_id: int, resolve_data: AdminResolveDuelRequest
     )
     if not duel:
         raise HTTPException(status_code=404, detail="Duelo no encontrado")
+
+    await verify_group_admin(db, current_user, duel.grupo_id)
     
     if duel.estado in ("completed", "penalized_challenger"):
         raise HTTPException(status_code=400, detail="El duelo ya está resuelto")
@@ -590,16 +758,28 @@ async def resolve_duel_admin(duel_id: int, resolve_data: AdminResolveDuelRequest
 # --------------------------------------------------------------------------
 
 @router.get("/misiones/sugerencias")
-async def get_admin_sugerencias(group_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+async def get_admin_sugerencias(
+    group_id: Optional[int] = Query(None), 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Obtiene el listado de misiones sugeridas por la comunidad pendientes de evaluación.
     Calcula en memoria los upvotes y downvotes agregados por los jugadores.
+    Filtra por la comunidad especificada o las comunidades administradas por el usuario.
     """
     from sqlalchemy.orm import joinedload
     from app.models.misiones import VotoMision
     stmt = select(Mision).options(joinedload(Mision.creador)).filter(Mision.estado == "propuesta")
     if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
         stmt = stmt.filter(Mision.grupo_id == group_id)
+    elif current_user.rol != "admin":
+        admin_groups_subq = select(MiembroGrupo.grupo_id).where(
+            MiembroGrupo.usuario_id == current_user.id,
+            MiembroGrupo.rol == "admin"
+        )
+        stmt = stmt.filter(Mision.grupo_id.in_(admin_groups_subq))
     stmt = stmt.order_by(Mision.fecha_creacion.desc())
     result = await db.execute(stmt)
     misiones = result.scalars().all()
@@ -630,10 +810,16 @@ async def get_admin_sugerencias(group_id: Optional[int] = None, db: AsyncSession
     return response_list
 
 @router.patch("/misiones/{mision_id}/sugerencia/aprobar")
-async def aprobar_sugerencia(mision_id: int, data: AdminAprobarSugerencia, db: AsyncSession = Depends(get_db)):
+async def aprobar_sugerencia(
+    mision_id: int, 
+    data: AdminAprobarSugerencia, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Aprueba una sugerencia de misión, fija la recompensa final asignada por el tribunal
     y la promociona a estado 'activa' notificando al usuario creador.
+    Certifica la jurisdicción territorial del juez.
     """
     from sqlalchemy.orm import selectinload
     result = await db.execute(select(Mision).options(selectinload(Mision.creador)).filter(Mision.id == mision_id, Mision.estado == "propuesta"))
@@ -641,6 +827,8 @@ async def aprobar_sugerencia(mision_id: int, data: AdminAprobarSugerencia, db: A
     if not mision:
         raise HTTPException(status_code=404, detail="Sugerencia no encontrada")
         
+    await verify_group_admin(db, current_user, mision.grupo_id)
+
     mision.estado = "activa"
     mision.recompensa = data.recompensa
     
@@ -657,22 +845,32 @@ async def aprobar_sugerencia(mision_id: int, data: AdminAprobarSugerencia, db: A
     return {"message": "Sugerencia aprobada y publicada"}
 
 @router.patch("/misiones/{mision_id}/sugerencia/rechazar")
-async def rechazar_sugerencia(mision_id: int, db: AsyncSession = Depends(get_db)):
+async def rechazar_sugerencia(
+    mision_id: int, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """Descarta y elimina de la base de datos una sugerencia de misión no apta."""
     result = await db.execute(select(Mision).filter(Mision.id == mision_id, Mision.estado == "propuesta"))
     mision = result.scalars().first()
     if not mision:
         raise HTTPException(status_code=404, detail="Sugerencia no encontrada")
         
+    await verify_group_admin(db, current_user, mision.grupo_id)
+
     await db.delete(mision)
     await db.commit()
     return {"message": "Sugerencia eliminada"}
 
 @router.get("/misiones/pruebas")
-async def get_admin_pruebas(group_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+async def get_admin_pruebas(
+    group_id: Optional[int] = Query(None), 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Obtiene las pruebas gráficas o escritas presentadas por los jugadores
-    que están pendientes de validación ('pending'), filtradas opcionalmente por grupo.
+    que están pendientes de validación ('pending'), filtradas por grupo.
     """
     from sqlalchemy.orm import selectinload
     stmt = (
@@ -681,7 +879,14 @@ async def get_admin_pruebas(group_id: Optional[int] = None, db: AsyncSession = D
         .filter(PruebaMision.estado == "pending")
     )
     if group_id is not None:
+        await verify_group_admin(db, current_user, group_id)
         stmt = stmt.join(PruebaMision.mision).filter(Mision.grupo_id == group_id)
+    elif current_user.rol != "admin":
+        admin_groups_subq = select(MiembroGrupo.grupo_id).where(
+            MiembroGrupo.usuario_id == current_user.id,
+            MiembroGrupo.rol == "admin"
+        )
+        stmt = stmt.join(PruebaMision.mision).filter(Mision.grupo_id.in_(admin_groups_subq))
     stmt = stmt.order_by(PruebaMision.fecha_creacion.desc())
     result = await db.execute(stmt)
     pruebas = result.scalars().all()
@@ -702,7 +907,11 @@ async def get_admin_pruebas(group_id: Optional[int] = None, db: AsyncSession = D
     return response
 
 @router.patch("/misiones/pruebas/{prueba_id}/validar")
-async def validar_prueba(prueba_id: int, db: AsyncSession = Depends(get_db)):
+async def validar_prueba(
+    prueba_id: int, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Valida la prueba de una misión, acreditando la recompensa en el saldo del grupo correspondiente
     mediante el motor de doble partida del Ledger (`move_tokens`), notificando al jugador.
@@ -717,6 +926,8 @@ async def validar_prueba(prueba_id: int, db: AsyncSession = Depends(get_db)):
     if not prueba:
         raise HTTPException(status_code=404, detail="Prueba no encontrada o ya procesada")
         
+    await verify_group_admin(db, current_user, prueba.mision.grupo_id)
+
     prueba.estado = "approved"
     
     usuario = prueba.usuario
@@ -724,12 +935,18 @@ async def validar_prueba(prueba_id: int, db: AsyncSession = Depends(get_db)):
 
     # Abonar recompensa al saldo del grupo de la misión mediante move_tokens
     from app.crud.ledger_crud import move_tokens
+    target_group_id = mision.grupo_id
+    if target_group_id is None:
+        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == usuario.id).limit(1)
+        res = await db.execute(member_stmt)
+        target_group_id = res.scalar()
+
     await move_tokens(
         db=db,
         user_id=usuario.id,
         amount=mision.recompensa,
         concept=f"Misión completada: {mision.titulo}",
-        group_id=mision.grupo_id,
+        group_id=target_group_id,
         auto_commit=False
     )
     
@@ -746,7 +963,12 @@ async def validar_prueba(prueba_id: int, db: AsyncSession = Depends(get_db)):
     return {"message": "Prueba validada correctamente"}
 
 @router.patch("/misiones/pruebas/{prueba_id}/rechazar")
-async def rechazar_prueba(prueba_id: int, data: AdminRechazarPrueba, db: AsyncSession = Depends(get_db)):
+async def rechazar_prueba(
+    prueba_id: int, 
+    data: AdminRechazarPrueba, 
+    current_user: Usuario = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db)
+):
     """
     Rechaza una prueba aportada por un usuario especificando el motivo pedagógico
     para que el jugador comprenda por qué su prueba no cumplió los requisitos.
@@ -761,6 +983,8 @@ async def rechazar_prueba(prueba_id: int, data: AdminRechazarPrueba, db: AsyncSe
     if not prueba:
         raise HTTPException(status_code=404, detail="Prueba no encontrada o ya procesada")
         
+    await verify_group_admin(db, current_user, prueba.mision.grupo_id)
+
     prueba.estado = "rejected"
     
     notif = NotificacionAdmin(
