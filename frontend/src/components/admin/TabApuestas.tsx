@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Check, X, Trophy, CheckCircle2, ThumbsUp, ThumbsDown, Trash, Pencil, Plus } from 'lucide-react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabApuestas() {
+  const { activeGroup } = useGroup();
   const [activeTab, setActiveTab] = useState<'sugerencias' | 'mercado'>('sugerencias');
   const [bets, setBets] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +23,9 @@ export default function TabApuestas() {
   const fetchBets = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/api/apuestas/');
+      const res = await api.get('/api/apuestas/', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setBets(res.data);
     } catch {
       toast.error('Error al cargar apuestas');
@@ -32,7 +36,7 @@ export default function TabApuestas() {
 
   useEffect(() => {
     fetchBets();
-  }, []);
+  }, [activeGroup?.id]);
 
   const handleStatusUpdate = async (betId: string, estado: string, opcion_ganadora_id?: string) => {
     const promise = api.patch(`/api/admin/bets/${betId}/status`, {

@@ -50,6 +50,7 @@ import TabNotificaciones from '@/components/admin/TabNotificaciones';
 import TabUsuarios from '@/components/admin/TabUsuarios';
 import TabRuleta from '@/components/admin/TabRuleta';
 import TabGrupoSettings from '@/components/admin/TabGrupoSettings';
+import GroupSwitcher from '@/components/groups/GroupSwitcher';
 
 export type AdminTab =
   | 'grupo'
@@ -102,17 +103,25 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <ShieldAlert size={28} className="text-dracula-red animate-pulse" />
             <div>
-              <h1 className="text-xl font-black text-dracula-red uppercase tracking-widest">
+              <h1 className="text-xl font-black text-dracula-red uppercase tracking-widest leading-tight">
                 Panel Admin
               </h1>
+              {activeGroup && (
+                <span className="text-xs font-bold text-dracula-purple flex items-center gap-1">
+                  Comunidad: {activeGroup.nombre}
+                </span>
+              )}
             </div>
           </div>
-          <Link
-            href="/feed"
-            className="p-2 bg-dracula-card rounded-lg text-dracula-gray hover:text-dracula-light transition-colors btn-press"
-          >
-            <ChevronLeft size={20} />
-          </Link>
+          <div className="flex items-center gap-2">
+            <GroupSwitcher />
+            <Link
+              href="/feed"
+              className="p-2 bg-dracula-card rounded-lg text-dracula-gray hover:text-dracula-light transition-colors btn-press"
+            >
+              <ChevronLeft size={20} />
+            </Link>
+          </div>
         </div>
 
         {/* Menú de Pestañas Deslizable */}
@@ -178,6 +187,7 @@ export default function AdminDashboard() {
             return (
               <button
                 key={tab.id}
+                id={`admin-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id as AdminTab)}
                 className={`flex items-center justify-center gap-1.5 flex-1 min-w-[100px] pb-3 text-sm font-bold transition-colors btn-press ${
                   isActive ? `border-b-2 ${tab.color}` : 'text-dracula-gray'

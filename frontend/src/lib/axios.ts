@@ -25,8 +25,9 @@ const getBaseUrl = (): string => {
   if (process.env.NODE_ENV === 'production') {
     return '';
   }
-  // En desarrollo local por defecto apuntamos al servidor FastAPI en el puerto 8000
-  return 'http://localhost:8000';
+  // En desarrollo local por defecto apuntamos al servidor FastAPI en IPv4 loopback (127.0.0.1:8000)
+  // para evitar fallos de resolución DNS IPv6 ([::1]) en navegadores bajo Windows
+  return 'http://127.0.0.1:8000';
 };
 
 const api = axios.create({

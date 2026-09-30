@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { formatSpanishDate } from '@/lib/formatters';
 import { CheckCircle, XCircle, Image as ImageIcon, MessageSquare, Target, ThumbsUp, ThumbsDown } from 'lucide-react';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabMisiones() {
   const [activeTab, setActiveTab] = useState<'sugerencias' | 'tribunal'>('sugerencias');
@@ -13,6 +14,7 @@ export default function TabMisiones() {
     <div className="flex flex-col gap-6 animate-fadeIn">
       <div className="flex border-b border-dracula-gray/30 mb-4">
         <button
+          id="admin-subtab-misiones-sugerencias"
           onClick={() => setActiveTab('sugerencias')}
           className={`flex-1 py-3 font-bold text-sm transition-colors ${
             activeTab === 'sugerencias' ? 'text-dracula-yellow border-b-2 border-dracula-yellow' : 'text-dracula-gray hover:text-dracula-light'
@@ -21,6 +23,7 @@ export default function TabMisiones() {
           Sugerencias Pendientes
         </button>
         <button
+          id="admin-subtab-misiones-tribunal"
           onClick={() => setActiveTab('tribunal')}
           className={`flex-1 py-3 font-bold text-sm transition-colors ${
             activeTab === 'tribunal' ? 'text-dracula-purple border-b-2 border-dracula-purple' : 'text-dracula-gray hover:text-dracula-light'
@@ -36,6 +39,7 @@ export default function TabMisiones() {
 }
 
 function SugerenciasView() {
+  const { activeGroup } = useGroup();
   const [sugerencias, setSugerencias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -44,7 +48,9 @@ function SugerenciasView() {
 
   const fetchSugerencias = async () => {
     try {
-      const res = await api.get('/api/admin/misiones/sugerencias');
+      const res = await api.get('/api/admin/misiones/sugerencias', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setSugerencias(res.data);
       
       const newEdits: Record<string, { reward: number | '' }> = {};
@@ -62,7 +68,7 @@ function SugerenciasView() {
 
   useEffect(() => {
     fetchSugerencias();
-  }, []);
+  }, [activeGroup?.id]);
 
   const handleUpdateEdit = (id: string, field: 'reward', value: any) => {
     setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
@@ -155,6 +161,7 @@ function SugerenciasView() {
 }
 
 function TribunalView() {
+  const { activeGroup } = useGroup();
   const [pruebas, setPruebas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -164,7 +171,9 @@ function TribunalView() {
 
   const fetchPruebas = async () => {
     try {
-      const res = await api.get('/api/admin/misiones/pruebas');
+      const res = await api.get('/api/admin/misiones/pruebas', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setPruebas(res.data);
     } catch {
       // Notificamos al usuario mediante toast si falla la carga de pruebas
@@ -176,7 +185,7 @@ function TribunalView() {
 
   useEffect(() => {
     fetchPruebas();
-  }, []);
+  }, [activeGroup?.id]);
 
   const handleValidar = async (id: number) => {
     try {

@@ -67,6 +67,9 @@ export default function GlobalNotificationListener() {
    * 3. Consulta las estadísticas específicas del grupo vía query parameter `group_id`.
    */
   const checkBoletin = useCallback(async () => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('disable_notification_modals') === 'true') {
+      return;
+    }
     if (!user || !activeGroup || isExcludedRoute(pathname)) return;
 
     try {
@@ -149,6 +152,9 @@ export default function GlobalNotificationListener() {
    * Consulta notificaciones prioritarias pendientes de lectura.
    */
   const checkUnread = async () => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('disable_notification_modals') === 'true') {
+      return;
+    }
     try {
       const res = await api.get('/api/notifications/unread');
       if (res.data) {

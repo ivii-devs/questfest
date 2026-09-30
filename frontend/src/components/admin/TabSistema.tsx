@@ -3,8 +3,10 @@ import { useState, useRef } from 'react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Megaphone, Upload, Send } from 'lucide-react';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabSistema() {
+  const { activeGroup } = useGroup();
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -32,7 +34,11 @@ export default function TabSistema() {
     if (!content.trim()) return toast.error('Escribe algo');
     const toastId = toast.loading('Lanzando anuncio...');
     try {
-      await api.post('/api/admin/announcements', { contenido: content, media_url: mediaUrl || null });
+      await api.post('/api/admin/announcements', { 
+        contenido: content, 
+        media_url: mediaUrl || null,
+        group_id: activeGroup?.id
+      });
       toast.success('Anuncio lanzado', { id: toastId });
       setContent('');
       setMediaUrl('');

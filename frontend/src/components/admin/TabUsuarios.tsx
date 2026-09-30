@@ -4,8 +4,10 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Users, DollarSign, ArrowUpRight, ArrowDownRight, History, X } from 'lucide-react';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabUsuarios() {
+  const { activeGroup } = useGroup();
   const [stats, setStats] = useState({ total_users: 0, total_tokens: 0 });
   const [users, setUsers] = useState<any[]>([]);
 
@@ -24,7 +26,9 @@ export default function TabUsuarios() {
 
   const fetchData = async () => {
     try {
-      const u = await api.get('/api/admin/users');
+      const u = await api.get('/api/admin/users', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setUsers(u.data);
     } catch {
       // Notificar al usuario si la lista de usuarios no se pudo obtener
@@ -32,7 +36,9 @@ export default function TabUsuarios() {
     }
 
     try {
-      const s = await api.get('/api/admin/users/stats');
+      const s = await api.get('/api/admin/users/stats', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setStats(s.data);
     } catch (error) {
       console.warn('El endpoint de estadísticas aún no está disponible o falló', error);
@@ -41,7 +47,7 @@ export default function TabUsuarios() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeGroup?.id]);
 
   const openBalanceModal = (userId: number, action: 'Bonificar' | 'Multar') => {
     setModalUserId(userId);
@@ -60,7 +66,11 @@ export default function TabUsuarios() {
     const toastId = toast.loading('Aplicando...');
 
     try {
-      await api.post(`/api/admin/users/${modalUserId}/balance`, { cantidad: amount, concepto: modalConcept });
+      await api.post(`/api/admin/users/${modalUserId}/balance`, { 
+        cantidad: amount, 
+        concepto: modalConcept,
+        group_id: activeGroup?.id
+      });
       toast.success('Saldo actualizado', { id: toastId });
       setIsModalOpen(false);
       fetchData();
@@ -75,7 +85,9 @@ export default function TabUsuarios() {
     setIsHistoryOpen(true);
     setHistoryLoading(true);
     try {
-      const res = await api.get(`/api/admin/users/${userId}/transactions`);
+      const res = await api.get(`/api/admin/users/${userId}/transactions`, {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setHistoryData(res.data);
     } catch {
       // Notificar al usuario si la carga de transacciones históricas falla
@@ -108,7 +120,7 @@ export default function TabUsuarios() {
         </div>
         <div className="flex flex-col">
           {users.map(u => (
-            <div key={u.id} className="p-4 border-b border-dracula-gray/10 flex flex-col gap-3 last:border-0 hover:bg-dracula-gray/5 transition-colors">
+            <div key={u.id} data-testid={`user-card-${u.username}`} className="p-4 border-b border-dracula-gray/10 flex flex-col gap-3 last:border-0 hover:bg-dracula-gray/5 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-[#ff79c6] flex items-center justify-center font-bold text-dracula-base overflow-hidden">

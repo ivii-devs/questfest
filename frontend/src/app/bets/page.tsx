@@ -65,7 +65,7 @@ export interface BetItem {
 
 export default function BetsPage() {
   const { refreshProfile } = useAuth();
-  const { activeGroup, updateActiveGroupBalance } = useGroup();
+  const { activeGroup, updateActiveGroupBalance, refreshGroups } = useGroup();
   const [activeTab, setActiveTab] = useState<
     'abiertas' | 'propuestas' | 'cerradas'
   >('abiertas');
@@ -85,6 +85,7 @@ export default function BetsPage() {
       const params = activeGroup ? { group_id: activeGroup.id } : {};
       const res = await api.get('/api/apuestas/', { params });
       setBetsList(res.data);
+      refreshGroups();
     } catch (error) {
       console.error('Error fetching bets:', error);
     }
@@ -296,6 +297,7 @@ export default function BetsPage() {
       <button
         onClick={() => setIsCreateModalOpen(true)}
         className="fixed bottom-20 right-4 w-14 h-14 bg-dracula-yellow rounded-full shadow-[0_0_20px_rgba(241,250,140,0.4)] flex items-center justify-center text-dracula-base btn-press z-40"
+        aria-label="Sugerir una apuesta"
       >
         <Plus size={32} strokeWidth={2.5} />
       </button>
@@ -523,6 +525,7 @@ interface SuggestBetModalProps {
  * Valida un mínimo de 2 opciones con multiplicadores estrictamente superiores a 1.00.
  */
 function SuggestBetModal({ onClose, onSuccess, groupId }: SuggestBetModalProps) {
+  const { activeGroup } = useGroup();
   const [title, setTitle] = useState('');
   const [options, setOptions] = useState([
     { text: '', multiplier: '' },
@@ -550,10 +553,12 @@ function SuggestBetModal({ onClose, onSuccess, groupId }: SuggestBetModalProps) 
       multiplier: Number(o.multiplier),
     }));
 
+    const effectiveGroupId = groupId ?? activeGroup?.id;
+
     const promise = api.post('/api/apuestas/suggest', {
       title,
       options: formattedOptions,
-      group_id: groupId || undefined,
+      group_id: effectiveGroupId || undefined,
     });
 
     toast.promise(promise, {

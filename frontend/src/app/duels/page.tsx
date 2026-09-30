@@ -80,7 +80,7 @@ interface DeclareWinnerModalProps {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 export default function DuelsPage() {
-  const { activeGroup } = useGroup();
+  const { activeGroup, refreshGroups } = useGroup();
   
   // Pestaña principal: retos activos vs registro de batallas pasadas
   const [activeTab, setActiveTab] = useState<'activos' | 'historial'>('activos');
@@ -118,6 +118,7 @@ export default function DuelsPage() {
    * Obtiene los duelos del grupo activo (o globales) y clasifica entre:
    * 1. Activos: pendientes de aceptación, en curso o en arbitraje del tribunal.
    * 2. Historial: finalizados o cancelados con sanción disciplinaria.
+   * Sincroniza atómicamente el saldo local del grupo para reflejar retenciones Escrow inmediatas.
    */
   const fetchDuels = async () => {
     try {
@@ -142,6 +143,8 @@ export default function DuelsPage() {
             d.status.includes('completed') || d.status.includes('penalized')
         )
       );
+      // Sincronización contable reactiva del saldo
+      refreshGroups();
     } catch (error) {
       console.error('Error fetching duels:', error);
     }

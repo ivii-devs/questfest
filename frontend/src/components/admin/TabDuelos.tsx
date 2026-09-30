@@ -5,8 +5,10 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Trophy, Scale } from 'lucide-react';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabDuelos() {
+  const { activeGroup } = useGroup();
   const [duels, setDuels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [penalizeAmounts, setPenalizeAmounts] = useState<Record<number, number | ''>>({});
@@ -15,7 +17,9 @@ export default function TabDuelos() {
   const fetchDuels = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/admin/duels');
+      const res = await api.get('/api/admin/duels', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      });
       setDuels(res.data);
     } catch {
       toast.error('Error al cargar duelos');
@@ -26,7 +30,7 @@ export default function TabDuelos() {
 
   useEffect(() => {
     fetchDuels();
-  }, []);
+  }, [activeGroup?.id]);
 
   const resolveDuel = async (duelId: number, resolution: 'challenger' | 'challenged' | 'draw', penalize: string = 'none', penalizeAmount: number = 0, motivoMulta: string = '') => {
     if (penalize !== 'none') {

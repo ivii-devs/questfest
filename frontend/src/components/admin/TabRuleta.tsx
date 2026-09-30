@@ -4,8 +4,10 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Plus } from 'lucide-react';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { useGroup } from '@/context/GroupContext';
 
 export default function TabRuleta() {
+  const { activeGroup } = useGroup();
   const [titulo, setTitulo] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [recompensa, setRecompensa] = useState<number | ''>(100);
@@ -17,7 +19,8 @@ export default function TabRuleta() {
       await api.post('/api/admin/roulette', {
         titulo,
         descripcion,
-        recompensa: recompensa === '' ? 100 : Number(recompensa)
+        recompensa: recompensa === '' ? 100 : Number(recompensa),
+        group_id: activeGroup?.id
       });
       toast.success('Añadida al bombo', { id: toastId });
       setTitulo(''); setDescripcion(''); setRecompensa(100);

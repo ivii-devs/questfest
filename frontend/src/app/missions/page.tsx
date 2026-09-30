@@ -76,7 +76,7 @@ interface SuggestMissionModalProps {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 export default function MissionsPage() {
-  const { activeGroup } = useGroup();
+  const { activeGroup, refreshGroups } = useGroup();
   
   // Pestaña de navegación activa
   const [activeTab, setActiveTab] = useState<'activas' | 'propuestas' | 'cerradas'>('activas');
@@ -89,6 +89,7 @@ export default function MissionsPage() {
   /**
    * Carga las misiones desde la API filtradas por el grupo activo.
    * Se ejecuta al alternar pestañas o al cambiar la comunidad en el header.
+   * Sincroniza reactivamente el saldo de tokens en la cabecera.
    */
   const fetchMissions = async () => {
     try {
@@ -103,6 +104,7 @@ export default function MissionsPage() {
         const res = await api.get('/api/misiones/closed', { params });
         setClosedMissions(res.data);
       }
+      refreshGroups();
     } catch (error) {
       console.error('Error fetching missions:', error);
     }
@@ -486,6 +488,7 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
  * Requiere una recompensa estimada en tokens y validaciones mínimas de longitud.
  */
 function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModalProps) {
+  const { activeGroup } = useGroup();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reward, setReward] = useState<number | ''>('');
@@ -507,11 +510,12 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
     
     setLoading(true);
     try {
+      const effectiveGroupId = groupId ?? activeGroup?.id;
       await api.post('/api/misiones/suggest', {
         title,
         description,
         reward: Number(reward),
-        group_id: groupId || undefined
+        group_id: effectiveGroupId || undefined
       });
       toast.success('Sugerencia enviada. El resto de jugadores podrá votarla en la pestaña de Propuestas.');
       onSuccess();
