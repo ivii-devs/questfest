@@ -16,6 +16,7 @@
 /playwright-report/
 /blob-report/
 /.playwright/
+/screenshots/
 
 # next.js
 /.next/

@@ -76,9 +76,12 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 frontend/.playwright/
+frontend/screenshots/
 test-results/
 playwright-report/
+screenshots/
 reports/
+
 
 # Metadatos y diagnósticos de TypeScript
 *.tsbuildinfo
