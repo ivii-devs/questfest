@@ -1,8 +1,15 @@
+import os
+os.environ["RATE_LIMIT_ENABLED"] = "false"
+os.environ["TESTING"] = "true"
+
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
+
+from app.core.rate_limiter import limiter
+limiter.enabled = False
 
 from app.main import app
 from app.models.base import Base
@@ -51,4 +58,9 @@ async def client(db_session):
     async with AsyncClient(transport=transport, base_url="http://testserver") as c:
         yield c
     app.dependency_overrides.clear()
+
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def cleanup_engine():
+    yield
+    await engine.dispose()
 

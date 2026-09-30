@@ -35,8 +35,8 @@ export default defineConfig({
 
   // Opciones compartidas para todos los proyectos y navegadores
   use: {
-    // URL base del frontend de Next.js
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
+    // URL base del frontend de Next.js en IPv4 explícito
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://127.0.0.1:3000',
 
     // Generar archivo de traza (.zip) en caso de fallo para inspección forense en Trace Viewer
     trace: 'retain-on-failure',
@@ -74,11 +74,24 @@ export default defineConfig({
     },
   ],
 
-  // Gestión automática del servidor de desarrollo Next.js si no se encuentra levantado
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 120000,
-  },
+  // Orquestación automática de servidores: levanta tanto FastAPI (8000) como Next.js (3000) si no están activos
+  webServer: [
+    {
+      command: '..\\backend\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      url: 'http://127.0.0.1:8000/',
+      cwd: '../backend',
+      reuseExistingServer: true,
+      timeout: 60000,
+      env: {
+        RATE_LIMIT_ENABLED: 'false',
+        TESTING: 'true',
+      },
+    },
+    {
+      command: 'npm run dev -- -H 127.0.0.1 -p 3000',
+      url: 'http://127.0.0.1:3000',
+      reuseExistingServer: true,
+      timeout: 120000,
+    },
+  ],
 });
