@@ -1,12 +1,12 @@
 /**
  * Utilidad resiliente para copiar texto al portapapeles.
- * 
+ *
  * ¿Por qué esta abstracción?
  * La API moderna `navigator.clipboard` exige estrictamente un contexto seguro (HTTPS o localhost).
  * En entornos de pruebas con IP local (ej. http://192.168.x.x:3000 para probar en móviles o PWAs),
  * en navegadores WebKit/Safari o en ciertos WebViews, `navigator.clipboard` es `undefined`, provocando
  * el clásico error en tiempo de ejecución: "TypeError: undefined is not an object".
- * 
+ *
  * Además, en iOS Safari las operaciones asíncronas sobre el portapapeles pueden fallar si se pierde
  * el contexto transitorio del gesto del usuario (User Activation). Esta utilidad intenta primero la API
  * nativa moderna y, en caso de fallo o ausencia de soporte, aplica de inmediato una técnica de respaldo
@@ -20,7 +20,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 
   // 1. Intento primario: API moderna Asynchronous Clipboard
   // Verificamos explícitamente la existencia de 'clipboard' y 'writeText' antes de invocar
-  if (navigator?.clipboard && typeof navigator.clipboard.writeText === 'function') {
+  if (
+    navigator?.clipboard &&
+    typeof navigator.clipboard.writeText === 'function'
+  ) {
     try {
       await navigator.clipboard.writeText(text);
       return true;
@@ -70,7 +73,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   } catch (error) {
     // Si ambos métodos fallan (por ejemplo, directivas de seguridad CSP extremadamente estrictas),
     // reportamos el fallo de forma controlada sin tumbar la aplicación
-    console.warn('[clipboard] No fue posible copiar el texto al portapapeles:', error);
+    console.warn(
+      '[clipboard] No fue posible copiar el texto al portapapeles:',
+      error
+    );
     return false;
   }
 }

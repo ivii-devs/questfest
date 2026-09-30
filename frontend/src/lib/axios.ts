@@ -3,7 +3,7 @@
  * CLIENTE HTTP AXIOS: QuestFest
  * ============================================================================
  * Instancia global preconfigurada para las comunicaciones cliente-servidor.
- * 
+ *
  * Características:
  * 1. `withCredentials: true`: Habilita el envío de cookies de sesión cross-origin,
  *    esencial para entornos de desarrollo en LAN y producción en dominios cruzados.

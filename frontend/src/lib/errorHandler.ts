@@ -18,7 +18,10 @@
  * ============================================================================
  */
 
-export function getApiErrorMessage(error: unknown, fallbackMessage = 'Ha ocurrido un error inesperado'): string {
+export function getApiErrorMessage(
+  error: unknown,
+  fallbackMessage = 'Ha ocurrido un error inesperado'
+): string {
   if (!error || typeof error !== 'object') {
     return fallbackMessage;
   }
@@ -77,7 +80,11 @@ export function getApiErrorMessage(error: unknown, fallbackMessage = 'Ha ocurrid
   }
 
   // 5. Mensaje de error a nivel de red o excepción genérica de Axios
-  if (typeof err.message === 'string' && err.message.trim().length > 0 && err.message !== 'AxiosError') {
+  if (
+    typeof err.message === 'string' &&
+    err.message.trim().length > 0 &&
+    err.message !== 'AxiosError'
+  ) {
     return err.message.trim();
   }
 

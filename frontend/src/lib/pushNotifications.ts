@@ -10,14 +10,18 @@ import api from '@/lib/axios';
 
 export function isIOSDevice(): boolean {
   if (typeof window === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
 }
 
 export function isStandaloneMode(): boolean {
   if (typeof window === 'undefined') return false;
-  return window.matchMedia('(display-mode: standalone)').matches || 
-    (navigator as any).standalone === true;
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
 }
 
 export function checkPushSupport(): { supported: boolean; reason?: string } {
@@ -65,7 +69,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export interface PushSubscriptionResult {
   success: boolean;
-  status?: 'granted' | 'denied' | 'requires_https' | 'requires_pwa_install' | 'unsupported';
+  status?:
+    | 'granted'
+    | 'denied'
+    | 'requires_https'
+    | 'requires_pwa_install'
+    | 'unsupported';
   message: string;
 }
 
@@ -80,7 +89,8 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
     return {
       success: false,
       status: 'requires_https',
-      message: 'iOS y los navegadores requieren una conexión segura (HTTPS) para habilitar notificaciones push. Accede mediante HTTPS o añade un túnel seguro.',
+      message:
+        'iOS y los navegadores requieren una conexión segura (HTTPS) para habilitar notificaciones push. Accede mediante HTTPS o añade un túnel seguro.',
     };
   }
 
@@ -89,7 +99,8 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
     return {
       success: false,
       status: 'requires_pwa_install',
-      message: 'En iPhone, Apple exige instalar la app en la pantalla de inicio (Compartir > Añadir a pantalla de inicio) para poder recibir notificaciones push.',
+      message:
+        'En iPhone, Apple exige instalar la app en la pantalla de inicio (Compartir > Añadir a pantalla de inicio) para poder recibir notificaciones push.',
     };
   }
 
@@ -106,7 +117,8 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
     return {
       success: false,
       status: 'denied',
-      message: 'El permiso de notificaciones está bloqueado. Por favor, habilítalo en los Ajustes de tu navegador o dispositivo.',
+      message:
+        'El permiso de notificaciones está bloqueado. Por favor, habilítalo en los Ajustes de tu navegador o dispositivo.',
     };
   }
 
@@ -149,7 +161,7 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
     if (!subscription) {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: applicationServerKey as any,
+        applicationServerKey: applicationServerKey as BufferSource,
       });
     }
 
@@ -168,11 +180,18 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
       status: 'granted',
       message: '¡Notificaciones push activadas con éxito!',
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[PushNotifications] Error al suscribir:', error);
+    const err = error as {
+      response?: { data?: { detail?: string } };
+      message?: string;
+    };
     return {
       success: false,
-      message: error.response?.data?.detail || error.message || 'Error al configurar notificaciones push.',
+      message:
+        err.response?.data?.detail ||
+        err.message ||
+        'Error al configurar notificaciones push.',
     };
   }
 }
@@ -182,7 +201,8 @@ export async function subscribeToPushNotifications(): Promise<PushSubscriptionRe
  */
 export async function isPushActive(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
-  if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+  if (!('Notification' in window) || Notification.permission !== 'granted')
+    return false;
   if (!('serviceWorker' in navigator)) return false;
 
   try {

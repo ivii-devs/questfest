@@ -10,17 +10,20 @@ Aplicación web progresiva (PWA) de QuestFest construida con Next.js (App Router
 ## Puesta en marcha
 
 1. Instalar dependencias:
+
    ```bash
    npm install
    ```
 
 2. Configurar variables de entorno:
    Copiar `.env.example` a `.env.local` y definir la URL de la API del backend:
+
    ```env
    NEXT_PUBLIC_API_URL=http://localhost:8000
    ```
 
 3. Iniciar el servidor de desarrollo:
+
    ```bash
    npm run dev
    ```

@@ -27,7 +27,9 @@ export function proxy(request: NextRequest) {
     pathname === '/sw.js' ||
     pathname === '/favicon.ico' ||
     pathname.includes('apple-touch-icon') ||
-    /\.(?:png|jpg|jpeg|gif|webp|svg|ico|json|js|css|woff2?|map)$/i.test(pathname)
+    /\.(?:png|jpg|jpeg|gif|webp|svg|ico|json|js|css|woff2?|map)$/i.test(
+      pathname
+    )
   ) {
     return NextResponse.next();
   }
@@ -36,7 +38,8 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value;
 
   // Rutas de autenticación que siempre son públicas para usuarios no registrados
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register');
+  const isAuthRoute =
+    pathname.startsWith('/login') || pathname.startsWith('/register');
 
   // Si el usuario no dispone de sesión activa e intenta acceder a rutas protegidas
   if (!token && !isAuthRoute) {

@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Configuración oficial de Playwright para QuestFest PWA.
- * 
+ *
  * Diseñada bajo el principio E2E-First con emulación Mobile-First,
  * generación garantizada de artefactos reproducibles (traces, capturas, vídeos)
  * y soporte multi-actor para escenarios de alta complejidad.
@@ -77,7 +77,8 @@ export default defineConfig({
   // Orquestación automática de servidores: levanta tanto FastAPI (8000) como Next.js (3000) si no están activos
   webServer: [
     {
-      command: '..\\backend\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      command:
+        '..\\backend\\venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000',
       url: 'http://127.0.0.1:8000/',
       cwd: '../backend',
       reuseExistingServer: true,
