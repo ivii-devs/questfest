@@ -28,7 +28,7 @@ export interface Post {
   exactTime?: string;
   fecha_creacion?: string;
   replies?: Reply[];
-  
+
   // Metadatos de apuestas
   titulo?: string;
   fase?: string;

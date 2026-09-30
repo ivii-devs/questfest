@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [
+    ".git",
+    "venv",
+    ".venv",
+    "alembic",
+    "__pycache__",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "I"]
+ignore = [
+    "E501",  # Longitud de línea gestionada por el formateador
+    "B008",  # Idioma estándar de FastAPI para inyección de dependencias con Depends()
+    "B904",  # Re-lanzamiento intencional sin encadenamiento redundante
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app/models/*" = ["F821"]  # Referencias adelantadas en cadenas de SQLAlchemy Mapped["Model"]
+"app/security.py" = ["E402"]  # Intercepción y parche de compatibilidad bcrypt previa a passlib
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

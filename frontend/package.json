@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "clean:ports": "node ../scripts/clean-ports.js",
     "pretest:e2e": "npm run clean:ports",
     "test:e2e": "playwright test",
@@ -19,7 +21,8 @@
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-hot-toast": "^2.6.0"
+    "react-hot-toast": "^2.6.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -30,6 +33,8 @@
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
