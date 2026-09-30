@@ -5,13 +5,13 @@
  * VISTA PRINCIPAL DE MISIONES Y DESAFÍOS: QuestFest PWA
  * ============================================================================
  * Centro de retos comunitarios gamificados con tres pestañas:
- * 
+ *
  * 1. Tablón Activo ('activas'): Misiones en curso disponibles para ser completadas.
  *    Las misiones diarias de ruleta tienen prioridad visual destacada al inicio.
  * 2. Sugerencias ('propuestas'): Espacio colaborativo donde los usuarios proponen
  *    nuevas misiones y la comunidad vota a favor o en contra.
  * 3. Historial ('cerradas'): Misiones completadas, expiradas o archivadas.
- * 
+ *
  * Flujo de reclamación:
  * El usuario adjunta pruebas multimedia (foto/video vía Cloudinary) y una justificación
  * que queda pendiente de veredicto por el Administrador/Tribunal.
@@ -19,7 +19,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Target, Plus, CheckCircle, X, Image as ImageIcon, Send } from 'lucide-react';
+import {
+  Target,
+  Plus,
+  CheckCircle,
+  X,
+  Image as ImageIcon,
+  Send,
+} from 'lucide-react';
 import api from '@/lib/axios';
 import PullToRefresh from '@/components/PullToRefresh';
 import MissionCard from '@/components/MissionCard';
@@ -27,24 +34,9 @@ import toast from 'react-hot-toast';
 import { useGroup } from '@/context/GroupContext';
 import GroupSwitcher from '@/components/groups/GroupSwitcher';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { MisionResponse } from '@/types';
 
-export interface MissionItem {
-  id: number | string;
-  title: string;
-  description: string;
-  reward: number;
-  is_roulette?: boolean;
-  group_id?: number | null;
-  status?: string;
-  votes_up?: number;
-  votes_down?: number;
-  user_vote?: 'up' | 'down' | null;
-  proposer_username?: string;
-  completed_by?: string;
-  completed_at?: string;
-  proof_text?: string;
-  proof_image_url?: string;
-}
+export type MissionItem = MisionResponse;
 
 interface ActiveMissionsViewProps {
   missions: MissionItem[];
@@ -53,7 +45,7 @@ interface ActiveMissionsViewProps {
 
 interface ProposedMissionsViewProps {
   proposals: MissionItem[];
-  onVote: (id: string, voteType: 'up' | 'down') => Promise<void>;
+  onVote: (id: string | number, voteType: 'up' | 'down') => Promise<void>;
 }
 
 interface ClosedMissionsViewProps {
@@ -77,9 +69,11 @@ interface SuggestMissionModalProps {
 // ============================================================================
 export default function MissionsPage() {
   const { activeGroup, refreshGroups } = useGroup();
-  
+
   // Pestaña de navegación activa
-  const [activeTab, setActiveTab] = useState<'activas' | 'propuestas' | 'cerradas'>('activas');
+  const [activeTab, setActiveTab] = useState<
+    'activas' | 'propuestas' | 'cerradas'
+  >('activas');
 
   // Estados de listados de misiones según su ciclo de vida
   const [activeMissions, setActiveMissions] = useState<MissionItem[]>([]);
@@ -115,27 +109,33 @@ export default function MissionsPage() {
   }, [activeTab, activeGroup?.id]);
 
   // Modales de validación de prueba y propuesta ciudadana
-  const [completionModalMission, setCompletionModalMission] = useState<MissionItem | null>(null);
+  const [completionModalMission, setCompletionModalMission] =
+    useState<MissionItem | null>(null);
   const [isProposeModalOpen, setIsProposeModalOpen] = useState(false);
 
   /**
    * Emite un voto ('up' o 'down') hacia una propuesta de la comunidad.
    * Maneja errores tipados retornados por FastAPI (detalles de validación Pydantic).
    */
-  const handleVoteProposal = async (id: string, voteType: 'up' | 'down') => {
+  const handleVoteProposal = async (
+    id: string | number,
+    voteType: 'up' | 'down'
+  ) => {
     try {
       await api.post(`/api/misiones/${id}/vote`, { vote_type: voteType });
       toast.success('Voto registrado');
       await fetchMissions();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string | Array<{ msg: string }> } } };
+      const err = error as {
+        response?: { data?: { detail?: string | Array<{ msg: string }> } };
+      };
       const detail = err.response?.data?.detail;
       const errorMsg =
         Array.isArray(detail) && detail.length > 0
           ? detail[0].msg
           : typeof detail === 'string'
-          ? detail
-          : 'Error al registrar el voto';
+            ? detail
+            : 'Error al registrar el voto';
       toast.error(errorMsg);
     }
   };
@@ -146,17 +146,17 @@ export default function MissionsPage() {
   };
 
   return (
-    <div className="app-shell-page bg-black text-dracula-light select-none">
+    <div className="app-shell-page text-dracula-light bg-black select-none">
       {/* Cabecera Fija con soporte de Área Segura (iPhone notch) */}
-      <header className="flex-shrink-0 bg-dracula-base/95 backdrop-blur-md z-40 app-shell-header border-b border-dracula-gray/20 pt-safe-top pb-3 px-4 select-none">
-        <div className="flex items-center justify-between gap-3 mb-4">
+      <header className="bg-dracula-base/95 app-shell-header border-dracula-gray/20 pt-safe-top z-40 flex-shrink-0 border-b px-4 pb-3 backdrop-blur-md select-none">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Target size={26} className="text-dracula-green" />
             <div>
-              <h1 className="text-lg font-black text-dracula-light uppercase tracking-wide">
+              <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
                 Misiones
               </h1>
-              <span className="text-[10px] text-dracula-gray font-bold block">
+              <span className="text-dracula-gray block text-[10px] font-bold">
                 {activeGroup?.nombre || 'Comunidad'}
               </span>
             </div>
@@ -165,7 +165,7 @@ export default function MissionsPage() {
             {activeTab === 'propuestas' && (
               <button
                 onClick={() => setIsProposeModalOpen(true)}
-                className="bg-dracula-yellow/20 text-dracula-yellow px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 hover:bg-dracula-yellow/30 transition-colors text-xs btn-press"
+                className="bg-dracula-yellow/20 text-dracula-yellow hover:bg-dracula-yellow/30 btn-press flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-colors"
               >
                 <Plus size={15} /> Sugerir
               </button>
@@ -174,12 +174,12 @@ export default function MissionsPage() {
           </div>
         </div>
 
-        <div className="flex w-full mb-1 border-b border-dracula-gray/30">
+        <div className="border-dracula-gray/30 mb-1 flex w-full border-b">
           <button
             onClick={() => setActiveTab('activas')}
-            className={`flex-1 pb-3 text-sm text-center font-semibold transition-colors btn-press ${
+            className={`btn-press flex-1 pb-3 text-center text-sm font-semibold transition-colors ${
               activeTab === 'activas'
-                ? 'text-dracula-green border-b-2 border-dracula-green'
+                ? 'text-dracula-green border-dracula-green border-b-2'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -187,9 +187,9 @@ export default function MissionsPage() {
           </button>
           <button
             onClick={() => setActiveTab('propuestas')}
-            className={`flex-1 pb-3 text-sm text-center font-semibold transition-colors btn-press ${
+            className={`btn-press flex-1 pb-3 text-center text-sm font-semibold transition-colors ${
               activeTab === 'propuestas'
-                ? 'text-dracula-yellow border-b-2 border-dracula-yellow'
+                ? 'text-dracula-yellow border-dracula-yellow border-b-2'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -197,9 +197,9 @@ export default function MissionsPage() {
           </button>
           <button
             onClick={() => setActiveTab('cerradas')}
-            className={`flex-1 pb-3 text-sm text-center font-semibold transition-colors btn-press ${
+            className={`btn-press flex-1 pb-3 text-center text-sm font-semibold transition-colors ${
               activeTab === 'cerradas'
-                ? 'text-dracula-light border-b-2 border-dracula-light'
+                ? 'text-dracula-light border-dracula-light border-b-2'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -209,11 +209,13 @@ export default function MissionsPage() {
       </header>
 
       <PullToRefresh onRefresh={fetchMissions}>
-        <main className="app-shell-scroll p-4 pb-28 flex flex-col gap-4">
+        <main className="app-shell-scroll flex flex-col gap-4 p-4 pb-28">
           {activeTab === 'activas' && (
             <ActiveMissionsView
               missions={activeMissions}
-              onOpenCompletionModal={(mission: MissionItem) => setCompletionModalMission(mission)}
+              onOpenCompletionModal={(mission: MissionItem) =>
+                setCompletionModalMission(mission)
+              }
             />
           )}
           {activeTab === 'propuestas' && (
@@ -231,7 +233,7 @@ export default function MissionsPage() {
       {/* Botón flotante FAB para sugerir misiones con estilo táctil */}
       <button
         onClick={() => setIsProposeModalOpen(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-dracula-yellow rounded-full shadow-[0_0_20px_rgba(241,250,140,0.4)] flex items-center justify-center text-dracula-base btn-press z-30"
+        className="bg-dracula-yellow text-dracula-base btn-press fixed right-4 bottom-20 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_0_20px_rgba(241,250,140,0.4)]"
         aria-label="Sugerir nueva misión"
       >
         <Plus size={32} strokeWidth={2.5} />
@@ -246,8 +248,8 @@ export default function MissionsPage() {
       )}
 
       {isProposeModalOpen && (
-        <SuggestMissionModal 
-          onClose={() => setIsProposeModalOpen(false)} 
+        <SuggestMissionModal
+          onClose={() => setIsProposeModalOpen(false)}
           onSuccess={() => {
             setIsProposeModalOpen(false);
             if (activeTab === 'propuestas') fetchMissions();
@@ -268,7 +270,10 @@ export default function MissionsPage() {
  * Tablón de misiones activas.
  * Prioriza las misiones provenientes de la ruleta diaria al principio del listado.
  */
-function ActiveMissionsView({ missions, onOpenCompletionModal }: ActiveMissionsViewProps) {
+function ActiveMissionsView({
+  missions,
+  onOpenCompletionModal,
+}: ActiveMissionsViewProps) {
   const sortedMissions = [...missions].sort((a, b) => {
     if (a.is_roulette && !b.is_roulette) return -1;
     if (!a.is_roulette && b.is_roulette) return 1;
@@ -276,17 +281,21 @@ function ActiveMissionsView({ missions, onOpenCompletionModal }: ActiveMissionsV
   });
 
   if (sortedMissions.length === 0) {
-    return <div className="text-center text-dracula-gray mt-10 text-sm">No hay misiones activas en esta fase.</div>;
+    return (
+      <div className="text-dracula-gray mt-10 text-center text-sm">
+        No hay misiones activas en esta fase.
+      </div>
+    );
   }
 
   return (
     <>
       {sortedMissions.map((mission) => (
-        <MissionCard 
-          key={mission.id} 
-          mission={mission} 
-          mode="active" 
-          onCompleteClick={onOpenCompletionModal} 
+        <MissionCard
+          key={mission.id}
+          mission={mission}
+          mode="active"
+          onCompleteClick={onOpenCompletionModal}
         />
       ))}
     </>
@@ -297,21 +306,27 @@ function ActiveMissionsView({ missions, onOpenCompletionModal }: ActiveMissionsV
  * Pestaña de sugerencias de misiones de la comunidad.
  * Muestra el balance de votos para que el Administrador evalúe su pase a producción.
  */
-function ProposedMissionsView({ proposals, onVote }: ProposedMissionsViewProps) {
+function ProposedMissionsView({
+  proposals,
+  onVote,
+}: ProposedMissionsViewProps) {
   return (
     <>
-      <div className="bg-dracula-yellow/10 border border-dracula-yellow/30 p-3 rounded-lg text-xs text-dracula-yellow font-semibold text-center mb-2">
-        Vota las ideas de otros jugadores. Las misiones con más apoyo serán revisadas por el Administrador.
+      <div className="bg-dracula-yellow/10 border-dracula-yellow/30 text-dracula-yellow mb-2 rounded-lg border p-3 text-center text-xs font-semibold">
+        Vota las ideas de otros jugadores. Las misiones con más apoyo serán
+        revisadas por el Administrador.
       </div>
       {proposals.length === 0 && (
-        <div className="text-center text-dracula-gray mt-10 text-sm">No hay propuestas aún. ¡Sé el primero!</div>
+        <div className="text-dracula-gray mt-10 text-center text-sm">
+          No hay propuestas aún. ¡Sé el primero!
+        </div>
       )}
       {proposals.map((prop) => (
-        <MissionCard 
-          key={prop.id} 
-          mission={prop} 
-          mode="proposed" 
-          onVote={onVote} 
+        <MissionCard
+          key={prop.id}
+          mission={prop}
+          mode="proposed"
+          onVote={onVote}
         />
       ))}
     </>
@@ -323,16 +338,16 @@ function ProposedMissionsView({ proposals, onVote }: ProposedMissionsViewProps) 
  */
 function ClosedMissionsView({ missions }: ClosedMissionsViewProps) {
   if (missions.length === 0) {
-    return <div className="text-center text-dracula-gray mt-10 text-sm">Aún no hay misiones cerradas.</div>;
+    return (
+      <div className="text-dracula-gray mt-10 text-center text-sm">
+        Aún no hay misiones cerradas.
+      </div>
+    );
   }
   return (
     <>
       {missions.map((mission) => (
-        <MissionCard 
-          key={mission.id} 
-          mission={mission} 
-          mode="closed" 
-        />
+        <MissionCard key={mission.id} mission={mission} mode="closed" />
       ))}
     </>
   );
@@ -347,7 +362,11 @@ function ClosedMissionsView({ missions }: ClosedMissionsViewProps) {
  * Sube la imagen/vídeo al endpoint '/api/upload/image' (protegido con magic bytes en backend)
  * y vincula la URL generada junto al reporte del jugador.
  */
-function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMissionModalProps) {
+function CompleteMissionModal({
+  mission,
+  onClose,
+  onSubmitSuccess,
+}: CompleteMissionModalProps) {
   const [proofText, setProofText] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -375,7 +394,9 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
   // Envío multipart/form-data a Cloudinary y registro de finalización
   const handleSubmit = async () => {
     if (!hasProof) {
-      toast.error('Debes aportar al menos una prueba: una foto/vídeo o un texto explicativo.');
+      toast.error(
+        'Debes aportar al menos una prueba: una foto/vídeo o un texto explicativo.'
+      );
       return;
     }
 
@@ -386,26 +407,30 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
         const formData = new FormData();
         formData.append('file', file);
         const uploadRes = await api.post('/api/upload/image', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
         secureUrl = uploadRes.data.secure_url;
       }
 
       await api.post(`/api/misiones/${mission.id}/complete`, {
         proof_text: proofText.trim() || undefined,
-        proof_image_url: secureUrl
+        proof_image_url: secureUrl,
       });
-      toast.success('Pruebas enviadas al Tribunal (Administrador) para su validación.');
+      toast.success(
+        'Pruebas enviadas al Tribunal (Administrador) para su validación.'
+      );
       onSubmitSuccess();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string | Array<{ msg: string }> } } };
+      const err = error as {
+        response?: { data?: { detail?: string | Array<{ msg: string }> } };
+      };
       const detail = err.response?.data?.detail;
       const errorMsg =
         Array.isArray(detail) && detail.length > 0
           ? detail[0].msg
           : typeof detail === 'string'
-          ? detail
-          : 'Error al enviar las pruebas. Inténtalo de nuevo.';
+            ? detail
+            : 'Error al enviar las pruebas. Inténtalo de nuevo.';
       toast.error(errorMsg);
     } finally {
       setUploading(false);
@@ -413,35 +438,50 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dracula-base w-full max-w-md rounded-2xl shadow-2xl border-2 border-dracula-green overflow-hidden flex flex-col relative scale-in-center">
-        <div className="flex justify-between items-center p-4 border-b border-dracula-gray/20 bg-dracula-card/50">
-          <h3 className="font-bold text-dracula-green text-sm uppercase tracking-wider flex items-center gap-2">
+    <div className="animate-fadeIn fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="bg-dracula-base border-dracula-green scale-in-center relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border-2 shadow-2xl">
+        <div className="border-dracula-gray/20 bg-dracula-card/50 flex items-center justify-between border-b p-4">
+          <h3 className="text-dracula-green flex items-center gap-2 text-sm font-bold tracking-wider uppercase">
             <CheckCircle size={18} /> Validar Misión
           </h3>
-          <button onClick={onClose} className="text-dracula-gray hover:text-dracula-red transition-colors btn-press">
+          <button
+            onClick={onClose}
+            className="text-dracula-gray hover:text-dracula-red btn-press transition-colors"
+          >
             <X size={22} />
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 p-5">
           <div>
-            <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest">Reclamando:</span>
-            <h4 className="text-lg font-bold text-dracula-light">{mission.title}</h4>
+            <span className="text-dracula-gray text-[10px] font-bold tracking-widest uppercase">
+              Reclamando:
+            </span>
+            <h4 className="text-dracula-light text-lg font-bold">
+              {mission.title}
+            </h4>
           </div>
 
-          <label className="w-full h-28 bg-dracula-card border-2 border-dashed border-dracula-gray/30 rounded-xl flex flex-col items-center justify-center text-dracula-gray hover:border-dracula-green hover:text-dracula-green transition-all group cursor-pointer relative overflow-hidden">
+          <label className="bg-dracula-card border-dracula-gray/30 text-dracula-gray hover:border-dracula-green hover:text-dracula-green group relative flex h-28 w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-all">
             {previewUrl ? (
               <>
                 {file?.type.startsWith('video/') ? (
-                  <video src={previewUrl} controls className="w-full h-full object-contain" />
+                  <video
+                    src={previewUrl}
+                    controls
+                    className="h-full w-full object-contain"
+                  />
                 ) : (
-                  <img src={previewUrl} alt="Preview" className="w-full h-full object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="h-full w-full object-contain opacity-80 transition-opacity group-hover:opacity-100"
+                  />
                 )}
                 <button
                   type="button"
                   onClick={handleClearFile}
-                  className="absolute top-2 right-2 p-1 bg-dracula-base/80 text-dracula-red rounded-full hover:bg-dracula-red hover:text-white transition-colors z-20"
+                  className="bg-dracula-base/80 text-dracula-red hover:bg-dracula-red absolute top-2 right-2 z-20 rounded-full p-1 transition-colors hover:text-white"
                   title="Eliminar archivo seleccionado"
                 >
                   <X size={16} />
@@ -449,33 +489,60 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
               </>
             ) : (
               <>
-                <ImageIcon size={28} className="mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold mt-1">Adjuntar Foto / Video (Opcional)</span>
+                <ImageIcon
+                  size={28}
+                  className="mb-1 transition-transform group-hover:scale-110"
+                />
+                <span className="mt-1 text-xs font-bold">
+                  Adjuntar Foto / Video (Opcional)
+                </span>
               </>
             )}
-            <input type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+            <input
+              type="file"
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </label>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-dracula-gray">Mensaje para el Tribunal (Opcional si adjuntas multimedia)</label>
+            <label className="text-dracula-gray text-[10px] font-bold uppercase">
+              Mensaje para el Tribunal (Opcional si adjuntas multimedia)
+            </label>
             <textarea
               value={proofText}
               onChange={(e) => setProofText(e.target.value)}
-              className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-green resize-none h-20"
+              className="bg-dracula-card border-dracula-gray/20 text-dracula-light focus:border-dracula-green h-20 w-full resize-none rounded-xl border p-3 text-base focus:outline-none"
               placeholder="Detalles sobre cómo completaste la prueba..."
             />
-            <span className="text-[10px] text-dracula-gray italic">
-              * Aporta al menos una prueba: una foto/vídeo o una justificación explicativa.
+            <span className="text-dracula-gray text-[10px] italic">
+              * Aporta al menos una prueba: una foto/vídeo o una justificación
+              explicativa.
             </span>
           </div>
         </div>
 
-        <div className="p-4 border-t border-dracula-gray/20 bg-dracula-card/20 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-xs text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 disabled:opacity-50 btn-press" disabled={uploading}>
+        <div className="border-dracula-gray/20 bg-dracula-card/20 flex gap-3 border-t p-4">
+          <button
+            onClick={onClose}
+            className="text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 btn-press flex-1 rounded-xl py-3 text-xs font-bold disabled:opacity-50"
+            disabled={uploading}
+          >
             Cancelar
           </button>
-          <button onClick={handleSubmit} disabled={uploading || !hasProof} className="flex-[2] py-3 rounded-xl font-bold text-xs bg-dracula-green text-dracula-base hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed btn-press">
-            {uploading ? <span className="animate-pulse">Enviando...</span> : <><Send size={16} /> Enviar Pruebas</>}
+          <button
+            onClick={handleSubmit}
+            disabled={uploading || !hasProof}
+            className="bg-dracula-green text-dracula-base btn-press flex flex-[2] items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {uploading ? (
+              <span className="animate-pulse">Enviando...</span>
+            ) : (
+              <>
+                <Send size={16} /> Enviar Pruebas
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -487,7 +554,11 @@ function CompleteMissionModal({ mission, onClose, onSubmitSuccess }: CompleteMis
  * Modal para proponer misiones a votación popular.
  * Requiere una recompensa estimada en tokens y validaciones mínimas de longitud.
  */
-function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModalProps) {
+function SuggestMissionModal({
+  onClose,
+  onSuccess,
+  groupId,
+}: SuggestMissionModalProps) {
   const { activeGroup } = useGroup();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -496,18 +567,18 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
 
   const handleSubmit = async () => {
     if (!title || !description || reward === '' || Number(reward) <= 0) {
-      toast.error("Rellena todos los campos correctamente");
+      toast.error('Rellena todos los campos correctamente');
       return;
     }
     if (title.length < 5) {
-      toast.error("El título debe tener al menos 5 caracteres");
+      toast.error('El título debe tener al menos 5 caracteres');
       return;
     }
     if (description.length < 10) {
-      toast.error("La descripción debe tener al menos 10 caracteres");
+      toast.error('La descripción debe tener al menos 10 caracteres');
       return;
     }
-    
+
     setLoading(true);
     try {
       const effectiveGroupId = groupId ?? activeGroup?.id;
@@ -515,19 +586,23 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
         title,
         description,
         reward: Number(reward),
-        group_id: effectiveGroupId || undefined
+        group_id: effectiveGroupId || undefined,
       });
-      toast.success('Sugerencia enviada. El resto de jugadores podrá votarla en la pestaña de Propuestas.');
+      toast.success(
+        'Sugerencia enviada. El resto de jugadores podrá votarla en la pestaña de Propuestas.'
+      );
       onSuccess();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string | Array<{ msg: string }> } } };
+      const err = error as {
+        response?: { data?: { detail?: string | Array<{ msg: string }> } };
+      };
       const detail = err.response?.data?.detail;
       const errorMsg =
         Array.isArray(detail) && detail.length > 0
           ? detail[0].msg
           : typeof detail === 'string'
-          ? detail
-          : 'Error enviando sugerencia';
+            ? detail
+            : 'Error enviando sugerencia';
       toast.error(errorMsg);
     } finally {
       setLoading(false);
@@ -535,45 +610,63 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dracula-base w-full max-w-md rounded-2xl shadow-2xl border-2 border-dracula-yellow overflow-hidden flex flex-col relative scale-in-center">
-        <div className="flex justify-between items-center p-4 border-b border-dracula-gray/20 bg-dracula-card/50">
-          <h3 className="font-bold text-dracula-yellow text-sm uppercase tracking-wider flex items-center gap-2">
+    <div className="animate-fadeIn fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+      <div className="bg-dracula-base border-dracula-yellow scale-in-center relative flex w-full max-w-md flex-col overflow-hidden rounded-2xl border-2 shadow-2xl">
+        <div className="border-dracula-gray/20 bg-dracula-card/50 flex items-center justify-between border-b p-4">
+          <h3 className="text-dracula-yellow flex items-center gap-2 text-sm font-bold tracking-wider uppercase">
             <Plus size={18} /> Sugerir Misión
           </h3>
-          <button onClick={onClose} className="text-dracula-gray hover:text-dracula-red transition-colors btn-press">
+          <button
+            onClick={onClose}
+            className="text-dracula-gray hover:text-dracula-red btn-press transition-colors"
+          >
             <X size={22} />
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="suggest-mission-title" className="text-[10px] font-bold uppercase text-dracula-gray">Título propuesto *</label>
+            <label
+              htmlFor="suggest-mission-title"
+              className="text-dracula-gray text-[10px] font-bold uppercase"
+            >
+              Título propuesto *
+            </label>
             <input
               id="suggest-mission-title"
               name="missionTitle"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-yellow"
+              className="bg-dracula-card border-dracula-gray/20 text-dracula-light focus:border-dracula-yellow w-full rounded-xl border p-3 text-base focus:outline-none"
               placeholder="Título de la misión o reto"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="suggest-mission-desc" className="text-[10px] font-bold uppercase text-dracula-gray">¿Qué hay que hacer? *</label>
+            <label
+              htmlFor="suggest-mission-desc"
+              className="text-dracula-gray text-[10px] font-bold uppercase"
+            >
+              ¿Qué hay que hacer? *
+            </label>
             <textarea
               id="suggest-mission-desc"
               name="missionDescription"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl p-3 text-base text-dracula-light focus:outline-none focus:border-dracula-yellow resize-none h-24"
+              className="bg-dracula-card border-dracula-gray/20 text-dracula-light focus:border-dracula-yellow h-24 w-full resize-none rounded-xl border p-3 text-base focus:outline-none"
               placeholder="Descripción y requisitos para validar el reto..."
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="suggest-mission-reward" className="text-[10px] font-bold uppercase text-dracula-gray">Recompensa sugerida (Tokens) *</label>
+            <label
+              htmlFor="suggest-mission-reward"
+              className="text-dracula-gray text-[10px] font-bold uppercase"
+            >
+              Recompensa sugerida (Tokens) *
+            </label>
             <TokenAmountInput
               id="suggest-mission-reward"
               name="missionReward"
@@ -582,17 +675,31 @@ function SuggestMissionModal({ onClose, onSuccess, groupId }: SuggestMissionModa
               onChange={setReward}
               placeholder="200"
               icon="💰"
-              className="w-full bg-dracula-card border border-dracula-gray/20 rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-yellow focus:outline-none focus:border-dracula-yellow"
+              className="bg-dracula-card border-dracula-gray/20 text-dracula-yellow focus:border-dracula-yellow w-full rounded-xl border py-3 pr-3 pl-9 text-base font-bold focus:outline-none"
             />
           </div>
         </div>
 
-        <div className="p-4 border-t border-dracula-gray/20 bg-dracula-card/20 flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-xs text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 disabled:opacity-50 btn-press" disabled={loading}>
+        <div className="border-dracula-gray/20 bg-dracula-card/20 flex gap-3 border-t p-4">
+          <button
+            onClick={onClose}
+            className="text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 btn-press flex-1 rounded-xl py-3 text-xs font-bold disabled:opacity-50"
+            disabled={loading}
+          >
             Cancelar
           </button>
-          <button onClick={handleSubmit} disabled={loading || !title || !description || !reward} className="flex-[2] py-3 rounded-xl font-bold text-xs bg-dracula-yellow text-dracula-base hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed btn-press">
-            {loading ? <span className="animate-pulse">Enviando...</span> : <><Send size={16} /> Enviar Propuesta</>}
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !title || !description || !reward}
+            className="bg-dracula-yellow text-dracula-base btn-press flex flex-[2] items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? (
+              <span className="animate-pulse">Enviando...</span>
+            ) : (
+              <>
+                <Send size={16} /> Enviar Propuesta
+              </>
+            )}
           </button>
         </div>
       </div>

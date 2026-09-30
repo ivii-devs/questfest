@@ -5,7 +5,7 @@
  * MODAL DE RULETA DIARIA SERVER-DRIVEN: QuestFest PWA
  * ============================================================================
  * Minijuego diario de asignación aleatoria de misiones secretas.
- * 
+ *
  * Principio de Diseño Seguro:
  * - **Server-Driven RNG**: La petición POST a '/api/ruleta/spin' se dispara primero.
  *   El servidor selecciona la misión y confirma que el jugador no haya tirado hoy.
@@ -23,8 +23,13 @@ import toast from 'react-hot-toast';
 
 // Opciones ficticias para generar la ilusión de ruleta mecánica
 const FAKE_OPTIONS = [
-  'El Aguador', 'Cámara Oculta', 'DJ de Guardia', 'El Infiltrado',
-  'Rey del Chupito', 'El Cuentacuentos', 'Abrazo Sorpresa'
+  'El Aguador',
+  'Cámara Oculta',
+  'DJ de Guardia',
+  'El Infiltrado',
+  'Desafio Estrategico',
+  'El Cuentacuentos',
+  'Abrazo Sorpresa',
 ];
 
 export interface RouletteResult {
@@ -57,14 +62,19 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
       missionData = res.data;
     } catch (error: unknown) {
       setIsSpinning(false);
-      const err = error as { response?: { status?: number; data?: { detail?: string | Array<{ msg: string }> } } };
+      const err = error as {
+        response?: {
+          status?: number;
+          data?: { detail?: string | Array<{ msg: string }> };
+        };
+      };
       const detail = err.response?.data?.detail;
       const errorMsg =
         Array.isArray(detail) && detail.length > 0
           ? detail[0].msg
           : typeof detail === 'string'
-          ? detail
-          : 'Error al tirar de la ruleta';
+            ? detail
+            : 'Error al tirar de la ruleta';
       toast.error(errorMsg);
 
       // Si ya tiró en el día actual, sincronizamos la clave local defensiva
@@ -84,7 +94,8 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
     const intervalTime = 100;
 
     const spinInterval = setInterval(() => {
-      const randomTitle = FAKE_OPTIONS[Math.floor(Math.random() * FAKE_OPTIONS.length)];
+      const randomTitle =
+        FAKE_OPTIONS[Math.floor(Math.random() * FAKE_OPTIONS.length)];
       setCurrentDisplay(randomTitle);
       spins++;
 
@@ -113,54 +124,56 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
       toast.success('¡Misión añadida a tu tablón!', { id: toastId });
       onClose();
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string | Array<{ msg: string }> } } };
+      const err = error as {
+        response?: { data?: { detail?: string | Array<{ msg: string }> } };
+      };
       const detail = err.response?.data?.detail;
       const errorMsg =
         Array.isArray(detail) && detail.length > 0
           ? detail[0].msg
           : typeof detail === 'string'
-          ? detail
-          : 'Error al aceptar';
+            ? detail
+            : 'Error al aceptar';
       toast.error(errorMsg, { id: toastId });
       setIsAccepting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fadeIn">
-      <div className="bg-dracula-base w-full max-w-sm rounded-3xl shadow-[0_0_50px_rgba(255,184,108,0.2)] border-2 border-[#ffb86c] overflow-hidden flex flex-col relative text-center">
+    <div className="animate-fadeIn fixed inset-0 z-[120] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
+      <div className="bg-dracula-base relative flex w-full max-w-sm flex-col overflow-hidden rounded-3xl border-2 border-[#ffb86c] text-center shadow-[0_0_50px_rgba(255,184,108,0.2)]">
         {/* Decoración superior */}
-        <div className="bg-[#ffb86c]/20 py-6 flex flex-col items-center justify-center border-b border-[#ffb86c]/30">
-          <div className="w-16 h-16 bg-[#ffb86c] rounded-full flex items-center justify-center text-dracula-base shadow-[0_0_20px_rgba(255,184,108,0.6)] mb-2 animate-pulse">
+        <div className="flex flex-col items-center justify-center border-b border-[#ffb86c]/30 bg-[#ffb86c]/20 py-6">
+          <div className="text-dracula-base mb-2 flex h-16 w-16 animate-pulse items-center justify-center rounded-full bg-[#ffb86c] shadow-[0_0_20px_rgba(255,184,108,0.6)]">
             <Dna size={32} />
           </div>
-          <h2 className="text-xl font-black text-dracula-light uppercase tracking-widest">
+          <h2 className="text-dracula-light text-xl font-black tracking-widest uppercase">
             Ruleta Diaria
           </h2>
         </div>
 
         {/* Pantalla de la Ruleta */}
-        <div className="p-8 flex flex-col items-center justify-center min-h-[220px]">
+        <div className="flex min-h-[220px] flex-col items-center justify-center p-8">
           {result ? (
-            <div className="animate-bounceIn flex flex-col items-center w-full">
-              <span className="text-[10px] uppercase font-bold text-[#ffb86c] tracking-widest mb-2">
+            <div className="animate-bounceIn flex w-full flex-col items-center">
+              <span className="mb-2 text-[10px] font-bold tracking-widest text-[#ffb86c] uppercase">
                 Tu misión exclusiva:
               </span>
-              <span className="text-2xl font-black text-dracula-light leading-tight mb-3">
+              <span className="text-dracula-light mb-3 text-2xl leading-tight font-black">
                 {result.title}
               </span>
 
               {/* Nueva caja descriptiva */}
-              <div className="w-full bg-dracula-card/60 p-4 rounded-xl border border-dracula-gray/20 shadow-inner">
-                <p className="text-sm text-dracula-light font-medium italic leading-relaxed">
-                  "{result.description}"
+              <div className="bg-dracula-card/60 border-dracula-gray/20 w-full rounded-xl border p-4 shadow-inner">
+                <p className="text-dracula-light text-sm leading-relaxed font-medium italic">
+                  &ldquo;{result.description}&rdquo;
                 </p>
-                <div className="mt-2 text-dracula-yellow font-bold text-xs bg-dracula-base border border-dracula-yellow/20 rounded py-1">
+                <div className="text-dracula-yellow bg-dracula-base border-dracula-yellow/20 mt-2 rounded border py-1 text-xs font-bold">
                   Recompensa: 💰 {result.reward} QuestCoins
                 </div>
               </div>
 
-              <span className="text-[10px] text-dracula-gray mt-4 max-w-[250px] uppercase font-bold tracking-wider">
+              <span className="text-dracula-gray mt-4 max-w-[250px] text-[10px] font-bold tracking-wider uppercase">
                 Añadida a tu tablón de misiones.
               </span>
             </div>
@@ -168,7 +181,7 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
             <div
               className={`text-2xl font-black transition-all ${
                 isSpinning
-                  ? 'text-[#ffb86c] scale-110 blur-[1px]'
+                  ? 'scale-110 text-[#ffb86c] blur-[1px]'
                   : 'text-dracula-gray text-xl'
               }`}
             >
@@ -178,15 +191,15 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
         </div>
 
         {/* Controles */}
-        <div className="p-5 border-t border-dracula-gray/20 bg-dracula-card/50">
+        <div className="border-dracula-gray/20 bg-dracula-card/50 border-t p-5">
           {!result ? (
             <button
               onClick={startSpin}
               disabled={isSpinning}
-              className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+              className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 font-black tracking-widest uppercase transition-all ${
                 isSpinning
                   ? 'bg-dracula-gray/20 text-dracula-gray cursor-not-allowed'
-                  : 'bg-[#ffb86c] text-dracula-base hover:opacity-90 shadow-[0_4px_0_rgba(200,140,80,1)] active:shadow-none active:translate-y-1'
+                  : 'text-dracula-base bg-[#ffb86c] shadow-[0_4px_0_rgba(200,140,80,1)] hover:opacity-90 active:translate-y-1 active:shadow-none'
               }`}
             >
               <Sparkles size={20} />{' '}
@@ -196,9 +209,10 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
             <button
               onClick={handleAccept}
               disabled={isAccepting}
-              className="w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 bg-dracula-green text-dracula-base hover:opacity-90 shadow-[0_4px_0_rgba(80,200,120,1)] active:shadow-none active:translate-y-1 disabled:opacity-50"
+              className="bg-dracula-green text-dracula-base flex w-full items-center justify-center gap-2 rounded-xl py-4 font-black tracking-widest uppercase shadow-[0_4px_0_rgba(80,200,120,1)] hover:opacity-90 active:translate-y-1 active:shadow-none disabled:opacity-50"
             >
-              <Target size={20} /> {isAccepting ? 'Aceptando...' : '¡Acepto el Reto!'}
+              <Target size={20} />{' '}
+              {isAccepting ? 'Aceptando...' : '¡Acepto el Reto!'}
             </button>
           )}
         </div>
@@ -207,7 +221,7 @@ export default function RouletteModal({ onClose }: RouletteModalProps) {
         {!isSpinning && !result && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-dracula-gray hover:text-dracula-red transition-colors"
+            className="text-dracula-gray hover:text-dracula-red absolute top-4 right-4 transition-colors"
           >
             <X size={24} />
           </button>

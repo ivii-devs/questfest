@@ -17,7 +17,7 @@ export default function GroupSwitcher() {
     return (
       <Link
         href="/groups"
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-dracula-purple/20 border border-dracula-purple/40 text-dracula-purple rounded-xl text-xs font-black uppercase tracking-wider hover:bg-dracula-purple hover:text-dracula-base transition-all"
+        className="bg-dracula-purple/20 border-dracula-purple/40 text-dracula-purple hover:bg-dracula-purple hover:text-dracula-base flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-black tracking-wider uppercase transition-all"
       >
         <Users size={14} />
         <span>Elegir Grupo</span>
@@ -28,24 +28,24 @@ export default function GroupSwitcher() {
   return (
     <Link
       href="/groups"
-      className="flex items-center gap-2 bg-dracula-card hover:bg-dracula-base border border-dracula-gray/20 hover:border-dracula-purple/50 px-3 py-1.5 rounded-xl transition-all shadow-sm max-w-[210px]"
+      className="bg-dracula-card hover:bg-dracula-base border-dracula-gray/20 hover:border-dracula-purple/50 flex max-w-[210px] items-center gap-2 rounded-xl border px-3 py-1.5 shadow-sm transition-all"
       title="Cambiar de grupo en el Hub"
     >
-      <div className="w-5 h-5 rounded-lg bg-dracula-purple/20 text-dracula-purple flex items-center justify-center text-[10px] font-black shrink-0">
+      <div className="bg-dracula-purple/20 text-dracula-purple flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-[10px] font-black">
         {activeGroup.nombre.charAt(0).toUpperCase()}
       </div>
 
-      <div className="flex flex-col min-w-0">
-        <span className="text-xs font-black text-dracula-light truncate leading-none mb-0.5">
+      <div className="flex min-w-0 flex-col">
+        <span className="text-dracula-light mb-0.5 truncate text-xs leading-none font-black">
           {activeGroup.nombre}
         </span>
-        <span className="text-[10px] font-bold text-dracula-yellow flex items-center gap-0.5 leading-none">
+        <span className="text-dracula-yellow flex items-center gap-0.5 text-[10px] leading-none font-bold">
           <Coins size={10} />
           {activeGroup.saldo_grupo} QC
         </span>
       </div>
 
-      <ChevronDown size={14} className="text-dracula-gray shrink-0 ml-auto" />
+      <ChevronDown size={14} className="text-dracula-gray ml-auto shrink-0" />
     </Link>
   );
 }

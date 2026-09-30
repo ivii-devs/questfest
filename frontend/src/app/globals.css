@@ -19,20 +19,21 @@
  * para asegurar consistencia visual inmediata durante el SSR.
  */
 :root,
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   --theme-app-bg: #000000;
   --theme-base: #1e2029;
   --theme-card: #282a36;
   --theme-text: #f8f8f2;
   --theme-subtext: #6272a4;
-  --theme-glass-bg: rgba(40, 42, 54, 0.70);
+  --theme-glass-bg: rgba(40, 42, 54, 0.7);
   --theme-glass-border: rgba(255, 255, 255, 0.15);
-  --theme-glass-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
+  --theme-glass-shadow:
+    0 15px 35px rgba(0, 0, 0, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
   --theme-border: rgba(98, 114, 164, 0.2);
   --theme-header-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
 }
 
-html[data-theme="light"] {
+html[data-theme='light'] {
   --theme-app-bg: #f8fafc;
   --theme-base: #f1f5f9;
   --theme-card: #ffffff;
@@ -40,9 +41,11 @@ html[data-theme="light"] {
   --theme-subtext: #64748b;
   --theme-glass-bg: rgba(255, 255, 255, 0.82);
   --theme-glass-border: rgba(0, 0, 0, 0.08);
-  --theme-glass-shadow: 0 12px 30px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
+  --theme-glass-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.08), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
   --theme-border: rgba(226, 232, 240, 0.8);
-  --theme-header-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.02);
+  --theme-header-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.02);
 }
 
 /*
@@ -60,15 +63,15 @@ html[data-theme="light"] {
 
 /* default: QuestFest Clásico */
 :root,
-html[data-palette="default"] {
+html[data-palette='default'] {
   --theme-feed-accent: #bd93f9;
   --theme-apuestas-accent: #f1fa8c;
   --theme-misiones-accent: #50fa7b;
   --theme-duelos-accent: #ff5555;
   --theme-tribunal-accent: #8be9fd;
 }
-html[data-theme="light"],
-html[data-theme="light"][data-palette="default"] {
+html[data-theme='light'],
+html[data-theme='light'][data-palette='default'] {
   --theme-feed-accent: #7c3aed;
   --theme-apuestas-accent: #b45309;
   --theme-misiones-accent: #15803d;
@@ -77,21 +80,22 @@ html[data-theme="light"][data-palette="default"] {
 }
 
 /* cyberpunk: Neón Futurista */
-html[data-palette="cyberpunk"] {
+html[data-palette='cyberpunk'] {
   --theme-app-bg: #080718;
   --theme-base: #110f29;
   --theme-card: #19163b;
   --theme-border: rgba(217, 70, 239, 0.2);
   --theme-glass-bg: rgba(25, 22, 59, 0.75);
   --theme-glass-border: rgba(217, 70, 239, 0.25);
-  --theme-glass-shadow: 0 15px 35px rgba(8, 7, 24, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
+  --theme-glass-shadow:
+    0 15px 35px rgba(8, 7, 24, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
   --theme-feed-accent: #d946ef;
   --theme-apuestas-accent: #facc15;
   --theme-misiones-accent: #22c55e;
   --theme-duelos-accent: #f43f5e;
   --theme-tribunal-accent: #06b6d4;
 }
-html[data-theme="light"][data-palette="cyberpunk"] {
+html[data-theme='light'][data-palette='cyberpunk'] {
   --theme-app-bg: #faf5ff;
   --theme-base: #f3e8ff;
   --theme-card: #ffffff;
@@ -106,21 +110,23 @@ html[data-theme="light"][data-palette="cyberpunk"] {
 }
 
 /* sunset: Atardecer Cálido */
-html[data-palette="sunset"] {
+html[data-palette='sunset'] {
   --theme-app-bg: #0f0c1b;
   --theme-base: #1a152e;
   --theme-card: #251e3d;
   --theme-border: rgba(245, 158, 11, 0.2);
   --theme-glass-bg: rgba(37, 30, 61, 0.75);
   --theme-glass-border: rgba(245, 158, 11, 0.25);
-  --theme-glass-shadow: 0 15px 35px rgba(15, 12, 27, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
+  --theme-glass-shadow:
+    0 15px 35px rgba(15, 12, 27, 0.8),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
   --theme-feed-accent: #6366f1;
   --theme-apuestas-accent: #f59e0b;
   --theme-misiones-accent: #10b981;
   --theme-duelos-accent: #ea580c;
   --theme-tribunal-accent: #0ea5e9;
 }
-html[data-theme="light"][data-palette="sunset"] {
+html[data-theme='light'][data-palette='sunset'] {
   --theme-app-bg: #fffbeb;
   --theme-base: #fef3c7;
   --theme-card: #ffffff;
@@ -135,21 +141,23 @@ html[data-theme="light"][data-palette="sunset"] {
 }
 
 /* pastel: Retro Arcade / Cozy */
-html[data-palette="pastel"] {
+html[data-palette='pastel'] {
   --theme-app-bg: #121118;
   --theme-base: #1a1923;
   --theme-card: #232030;
   --theme-border: rgba(192, 132, 252, 0.2);
   --theme-glass-bg: rgba(35, 32, 48, 0.75);
   --theme-glass-border: rgba(192, 132, 252, 0.25);
-  --theme-glass-shadow: 0 15px 35px rgba(18, 17, 24, 0.8), inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
+  --theme-glass-shadow:
+    0 15px 35px rgba(18, 17, 24, 0.8),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.2);
   --theme-feed-accent: #c084fc;
   --theme-apuestas-accent: #fde047;
   --theme-misiones-accent: #86efac;
   --theme-duelos-accent: #fda4af;
   --theme-tribunal-accent: #7dd3fc;
 }
-html[data-theme="light"][data-palette="pastel"] {
+html[data-theme='light'][data-palette='pastel'] {
   --theme-app-bg: #fdfbf7;
   --theme-base: #f6f2ea;
   --theme-card: #ffffff;
@@ -166,14 +174,14 @@ html[data-theme="light"][data-palette="pastel"] {
 /* --- 2. Colección Monocromática (Minimal Accent) --- */
 
 /* mono-amethyst */
-html[data-palette="mono-amethyst"] {
+html[data-palette='mono-amethyst'] {
   --theme-feed-accent: #a855f7;
   --theme-apuestas-accent: #a855f7;
   --theme-misiones-accent: #a855f7;
   --theme-duelos-accent: #a855f7;
   --theme-tribunal-accent: #a855f7;
 }
-html[data-theme="light"][data-palette="mono-amethyst"] {
+html[data-theme='light'][data-palette='mono-amethyst'] {
   --theme-feed-accent: #7e22ce;
   --theme-apuestas-accent: #7e22ce;
   --theme-misiones-accent: #7e22ce;
@@ -182,14 +190,14 @@ html[data-theme="light"][data-palette="mono-amethyst"] {
 }
 
 /* mono-sapphire */
-html[data-palette="mono-sapphire"] {
+html[data-palette='mono-sapphire'] {
   --theme-feed-accent: #38bdf8;
   --theme-apuestas-accent: #38bdf8;
   --theme-misiones-accent: #38bdf8;
   --theme-duelos-accent: #38bdf8;
   --theme-tribunal-accent: #38bdf8;
 }
-html[data-theme="light"][data-palette="mono-sapphire"] {
+html[data-theme='light'][data-palette='mono-sapphire'] {
   --theme-feed-accent: #0284c7;
   --theme-apuestas-accent: #0284c7;
   --theme-misiones-accent: #0284c7;
@@ -198,14 +206,14 @@ html[data-theme="light"][data-palette="mono-sapphire"] {
 }
 
 /* mono-emerald */
-html[data-palette="mono-emerald"] {
+html[data-palette='mono-emerald'] {
   --theme-feed-accent: #34d399;
   --theme-apuestas-accent: #34d399;
   --theme-misiones-accent: #34d399;
   --theme-duelos-accent: #34d399;
   --theme-tribunal-accent: #34d399;
 }
-html[data-theme="light"][data-palette="mono-emerald"] {
+html[data-theme='light'][data-palette='mono-emerald'] {
   --theme-feed-accent: #059669;
   --theme-apuestas-accent: #059669;
   --theme-misiones-accent: #059669;
@@ -214,14 +222,14 @@ html[data-theme="light"][data-palette="mono-emerald"] {
 }
 
 /* mono-gold */
-html[data-palette="mono-gold"] {
+html[data-palette='mono-gold'] {
   --theme-feed-accent: #fbbf24;
   --theme-apuestas-accent: #fbbf24;
   --theme-misiones-accent: #fbbf24;
   --theme-duelos-accent: #fbbf24;
   --theme-tribunal-accent: #fbbf24;
 }
-html[data-theme="light"][data-palette="mono-gold"] {
+html[data-theme='light'][data-palette='mono-gold'] {
   --theme-feed-accent: #b45309;
   --theme-apuestas-accent: #b45309;
   --theme-misiones-accent: #b45309;
@@ -230,14 +238,14 @@ html[data-theme="light"][data-palette="mono-gold"] {
 }
 
 /* mono-crimson */
-html[data-palette="mono-crimson"] {
+html[data-palette='mono-crimson'] {
   --theme-feed-accent: #f87171;
   --theme-apuestas-accent: #f87171;
   --theme-misiones-accent: #f87171;
   --theme-duelos-accent: #f87171;
   --theme-tribunal-accent: #f87171;
 }
-html[data-theme="light"][data-palette="mono-crimson"] {
+html[data-theme='light'][data-palette='mono-crimson'] {
   --theme-feed-accent: #b91c1c;
   --theme-apuestas-accent: #b91c1c;
   --theme-misiones-accent: #b91c1c;
@@ -258,7 +266,8 @@ html[data-theme="light"][data-palette="mono-crimson"] {
  * - Tipografía del sistema: adoptamos San Francisco (SF Pro) mediante '-apple-system' para
  *   lograr una estética y fidelidad tipográfica idéntica a las aplicaciones oficiales de la App Store.
  */
-html, body {
+html,
+body {
   background-color: var(--theme-app-bg);
   color: var(--theme-text);
   width: 100%;
@@ -274,7 +283,9 @@ html, body {
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+    system-ui, sans-serif;
 }
 
 /*
@@ -283,7 +294,7 @@ html, body {
  */
 input,
 textarea,
-[contenteditable="true"],
+[contenteditable='true'],
 .selectable-text {
   user-select: text !important;
   -webkit-user-select: text !important;
@@ -307,7 +318,7 @@ textarea,
 }
 
 /* Neutralización de fondos oscuros hardcodeados en pantallas completas en modo claro */
-html[data-theme="light"] .min-h-screen.bg-black {
+html[data-theme='light'] .min-h-screen.bg-black {
   background-color: var(--theme-app-bg) !important;
   color: var(--theme-text);
 }
@@ -327,7 +338,9 @@ html[data-theme="light"] .min-h-screen.bg-black {
 .btn-press,
 .touch-scale {
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.12s ease;
+  transition:
+    transform 0.12s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.12s ease;
 }
 
 .btn-press:active,
@@ -342,11 +355,17 @@ html[data-theme="light"] .min-h-screen.bg-black {
  * respeten la barra de gestos física de iOS.
  */
 .pt-safe-top {
-  padding-top: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.75rem)) !important;
+  padding-top: max(
+    1rem,
+    calc(env(safe-area-inset-top, 0px) + 0.75rem)
+  ) !important;
 }
 
 .pb-safe-bottom {
-  padding-bottom: max(1rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem)) !important;
+  padding-bottom: max(
+    1rem,
+    calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
+  ) !important;
 }
 
 /* 
@@ -355,7 +374,7 @@ html[data-theme="light"] .min-h-screen.bg-black {
  * En pantallas móviles fijamos 16px para garantizar una sensación de app móvil nativa.
  */
 @media screen and (max-width: 768px) {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
   textarea,
   select {
     font-size: 16px !important;
@@ -390,5 +409,3 @@ html[data-theme="light"] .min-h-screen.bg-black {
 .app-shell-header {
   box-shadow: var(--theme-header-shadow) !important;
 }
-
-

@@ -26,7 +26,11 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
   const groupAlfaName = `Grupo_Alfa_Admin_E2E_${timestamp}`;
   const groupBetaName = `Grupo_Beta_Admin_E2E_${timestamp}`;
 
-  test('debe confinar estrictamente la administración, visualización y balances al grupo activo', async ({ browser, request, baseURL }) => {
+  test('debe confinar estrictamente la administración, visualización y balances al grupo activo', async ({
+    browser,
+    request,
+    baseURL,
+  }) => {
     test.setTimeout(90000);
 
     const apiBase = baseURL?.replace('3000', '8000') || 'http://127.0.0.1:8000';
@@ -112,7 +116,12 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     // --------------------------------------------------------------------------
     const adminContext = await browser.newContext();
     await adminContext.addCookies([
-      { name: 'access_token', value: tokens[adminAlfaUsername], domain: '127.0.0.1', path: '/' },
+      {
+        name: 'access_token',
+        value: tokens[adminAlfaUsername],
+        domain: '127.0.0.1',
+        path: '/',
+      },
     ]);
     await adminContext.addInitScript(
       ({ token, activeGroupId }) => {
@@ -128,8 +137,12 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     await adminPage.goto('/admin');
 
     // 1. Verificación de Cabecera con Indicador Territorial y Switcher
-    await expect(adminPage.getByRole('heading', { name: /panel admin/i })).toBeVisible({ timeout: 15000 });
-    await expect(adminPage.getByText(`Comunidad: ${groupAlfaName}`)).toBeVisible();
+    await expect(
+      adminPage.getByRole('heading', { name: /panel admin/i })
+    ).toBeVisible({ timeout: 15000 });
+    await expect(
+      adminPage.getByText(`Comunidad: ${groupAlfaName}`)
+    ).toBeVisible();
 
     // 2. Navegación a Tab Usuarios y Verificación de Aislamiento
     const tabUsuarios = adminPage.locator('#admin-tab-usuarios');
@@ -137,24 +150,34 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     await tabUsuarios.click();
 
     // Comprobar que en el Directorio aparece Jugador Alfa y Admin Alfa, pero NUNCA Admin Beta
-    await expect(adminPage.getByText(`@${jugadorAlfaUsername}`)).toBeVisible({ timeout: 10000 });
+    await expect(adminPage.getByText(`@${jugadorAlfaUsername}`)).toBeVisible({
+      timeout: 10000,
+    });
     await expect(adminPage.getByText(`@${adminAlfaUsername}`)).toBeVisible();
-    await expect(adminPage.getByText(`@${adminBetaUsername}`)).not.toBeVisible();
+    await expect(
+      adminPage.getByText(`@${adminBetaUsername}`)
+    ).not.toBeVisible();
 
     // 3. Verificación de Ajuste Manual de Saldo en Pantalla (Bonificación)
     // Localizamos la tarjeta de Jugador Alfa y pulsamos Bonificar
-    const jugadorCard = adminPage.getByTestId(`user-card-${jugadorAlfaUsername}`);
+    const jugadorCard = adminPage.getByTestId(
+      `user-card-${jugadorAlfaUsername}`
+    );
     await expect(jugadorCard).toBeVisible();
     await jugadorCard.getByRole('button', { name: /bonificar/i }).click();
 
     // Rellenamos el modal de balance
     await expect(adminPage.getByText(/bonificar saldo/i)).toBeVisible();
     await adminPage.locator('input[placeholder="0"]').fill('50');
-    await adminPage.locator('input[placeholder="Motivo del ajuste"]').fill('Premio Especial E2E');
+    await adminPage
+      .locator('input[placeholder="Motivo del ajuste"]')
+      .fill('Premio Especial E2E');
 
     // Enviamos el ajuste y verificamos actualización
     const [balanceRes] = await Promise.all([
-      adminPage.waitForResponse(res => res.url().includes('/balance') && res.status() === 200),
+      adminPage.waitForResponse(
+        (res) => res.url().includes('/balance') && res.status() === 200
+      ),
       adminPage.getByRole('button', { name: /confirmar/i }).click(),
     ]);
     expect(balanceRes.status()).toBe(200);
@@ -162,17 +185,23 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     // 4. Verificación de Tab Apuestas Scoped al Grupo Alfa
     const tabApuestas = adminPage.locator('#admin-tab-apuestas');
     await tabApuestas.click();
-    await expect(adminPage.getByText(`Apuesta_E2E_${timestamp}`)).toBeVisible({ timeout: 10000 });
+    await expect(adminPage.getByText(`Apuesta_E2E_${timestamp}`)).toBeVisible({
+      timeout: 10000,
+    });
 
     // 5. Verificación de Tab Duelos
     const tabDuelos = adminPage.locator('#admin-tab-duelos');
     await tabDuelos.click();
-    await expect(adminPage.getByText(/tribunal de duelos/i)).toBeVisible({ timeout: 10000 });
+    await expect(adminPage.getByText(/tribunal de duelos/i)).toBeVisible({
+      timeout: 10000,
+    });
 
     // 6. Verificación de Tab Misiones
     const tabMisiones = adminPage.locator('#admin-tab-misiones');
     await tabMisiones.click();
-    await expect(adminPage.locator('#admin-subtab-misiones-sugerencias')).toBeVisible({ timeout: 10000 });
+    await expect(
+      adminPage.locator('#admin-subtab-misiones-sugerencias')
+    ).toBeVisible({ timeout: 10000 });
 
     await adminContext.close();
 
@@ -181,7 +210,12 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     // --------------------------------------------------------------------------
     const rasoContext = await browser.newContext();
     await rasoContext.addCookies([
-      { name: 'access_token', value: tokens[jugadorRasoUsername], domain: '127.0.0.1', path: '/' },
+      {
+        name: 'access_token',
+        value: tokens[jugadorRasoUsername],
+        domain: '127.0.0.1',
+        path: '/',
+      },
     ]);
     await rasoContext.addInitScript(
       ({ token, activeGroupId }) => {
@@ -198,7 +232,10 @@ test.describe('Aislamiento Territorial Multi-Tenancy: Panel Admin y Tribunal', (
     await rasoPage.goto('/admin');
 
     // Debe ser interceptado por el guard y redirigido automáticamente a /feed
-    await rasoPage.waitForURL(url => url.pathname.includes('/feed'), { waitUntil: 'commit', timeout: 15000 });
+    await rasoPage.waitForURL((url) => url.pathname.includes('/feed'), {
+      waitUntil: 'commit',
+      timeout: 15000,
+    });
     expect(rasoPage.url()).toContain('/feed');
 
     await rasoContext.close();

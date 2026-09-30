@@ -10,7 +10,7 @@
  * ¿Por qué existe este componente?
  * Los campos numéricos estándar de HTML5 (`<input type="number">`) presentan
  * varias fricciones críticas en entornos móviles y PWAs táctiles:
- * 
+ *
  * 1. Trampa del cero residual ('0100'):
  *    Al usar `parseInt(e.target.value) || 0`, cuando el usuario pulsa retroceso
  *    para limpiar el campo, el valor temporal `""` se convertía forzosamente en `0`.
@@ -89,7 +89,6 @@ export default function TokenAmountInput({
   autoFocus = false,
   onBlur,
 }: TokenAmountInputProps) {
-
   /**
    * Al recibir el foco (por clic, toque táctil o navegación con tabulador),
    * seleccionamos automáticamente todo el texto.
@@ -106,7 +105,14 @@ export default function TokenAmountInput({
    * (exponentes como 'e', signos de suma/resta o decimales).
    */
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-' || e.key === '.' || e.key === ',') {
+    if (
+      e.key === 'e' ||
+      e.key === 'E' ||
+      e.key === '+' ||
+      e.key === '-' ||
+      e.key === '.' ||
+      e.key === ','
+    ) {
       e.preventDefault();
     }
   };
@@ -166,24 +172,34 @@ export default function TokenAmountInput({
 
     if (typeof CustomIcon === 'string') {
       // Soporte para emojis directos (como 💰)
-      return <span className="pointer-events-none text-base select-none">{CustomIcon}</span>;
+      return (
+        <span className="pointer-events-none text-base select-none">
+          {CustomIcon}
+        </span>
+      );
     }
 
     if (React.isValidElement(CustomIcon)) {
       // Si se pasa un elemento JSX ya instanciado (ej: <DollarSign size={16} />)
-      return <span className="pointer-events-none flex items-center justify-center">{CustomIcon}</span>;
+      return (
+        <span className="pointer-events-none flex items-center justify-center">
+          {CustomIcon}
+        </span>
+      );
     }
 
     // Si se pasa una referencia de componente (ej: icon={Coins} o icon={DollarSign})
     const IconComponent = CustomIcon as LucideIcon;
-    return <IconComponent size={18} className={`${iconColor} pointer-events-none`} />;
+    return (
+      <IconComponent size={18} className={`${iconColor} pointer-events-none`} />
+    );
   };
 
   return (
     <div className="relative w-full">
       {/* Contenedor del icono decorativo con pointer-events-none absoluto
           para garantizar que ningún clic sea interceptado por el SVG */}
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+      <div className="pointer-events-none absolute top-1/2 left-3 z-10 flex -translate-y-1/2 items-center justify-center">
         {renderIcon()}
       </div>
 

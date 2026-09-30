@@ -10,24 +10,25 @@ export default function GlobalError({
 }) {
   return (
     <html lang="es">
-      <body className="bg-black text-dracula-light min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-dracula-card p-8 rounded-2xl border border-dracula-red/30 shadow-2xl max-w-md w-full flex flex-col items-center gap-6">
-          <div className="p-4 bg-dracula-red/10 text-dracula-red rounded-full">
+      <body className="text-dracula-light flex min-h-screen flex-col items-center justify-center bg-black p-6 text-center">
+        <div className="bg-dracula-card border-dracula-red/30 flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border p-8 shadow-2xl">
+          <div className="bg-dracula-red/10 text-dracula-red rounded-full p-4">
             <AlertTriangle size={48} />
           </div>
-          
+
           <div className="flex flex-col gap-2">
-            <h1 className="text-xl font-black uppercase tracking-wider text-dracula-light">
+            <h1 className="text-dracula-light text-xl font-black tracking-wider uppercase">
               Error Crítico de Aplicación
             </h1>
-            <p className="text-xs text-dracula-gray leading-relaxed">
-              Ocurrió un error global en la plataforma QuestFest. Por favor, reinicia la aplicación.
+            <p className="text-dracula-gray text-xs leading-relaxed">
+              Ocurrió un error global en la plataforma QuestFest. Por favor,
+              reinicia la aplicación.
             </p>
           </div>
 
           <button
             onClick={() => reset()}
-            className="w-full bg-dracula-red text-white font-bold py-3 px-6 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-sm"
+            className="bg-dracula-red flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white transition-all hover:opacity-90"
           >
             <RefreshCw size={16} /> Reiniciar Aplicación
           </button>

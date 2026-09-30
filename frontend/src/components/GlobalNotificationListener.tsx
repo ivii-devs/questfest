@@ -6,7 +6,7 @@
  * ============================================================================
  * Componente centinela invisible montado en la raíz de la aplicación para
  * recibir avisos push simulados y presentar el boletín matutino.
- * 
+ *
  * Mecanismo híbrido:
  * 1. Sondeo reactivo (Short-Polling de 15s): Consulta pasiva periódica de notificaciones
  *    pendientes ('/api/notifications/unread') y configuración horaria del boletín.
@@ -24,15 +24,12 @@ import { useGroup } from '@/context/GroupContext';
 import { usePathname } from 'next/navigation';
 import { BellRing, Check } from 'lucide-react';
 import DailySummaryModal, { DailySummaryData } from './DailySummaryModal';
+import {
+  useNotificationStore,
+  UnreadNotificationData,
+} from '@/store/useNotificationStore';
 
-export interface UnreadNotification {
-  id: number;
-  titulo: string;
-  mensaje: string;
-  media_url?: string | null;
-  config_boletin?: DailySummaryData | null;
-  fecha_creacion?: string;
-}
+export type UnreadNotification = UnreadNotificationData;
 
 /**
  * Rutas excluidas donde no debe proyectarse el boletín diario (como el Welcome Hub o login).
@@ -53,13 +50,13 @@ export default function GlobalNotificationListener() {
   const { user } = useAuth();
   const { activeGroup } = useGroup();
   const pathname = usePathname();
-  const [unreadNotif, setUnreadNotif] = useState<UnreadNotification | null>(null);
+  const unreadNotif = useNotificationStore((s) => s.unreadNotification);
   const [boletinData, setBoletinData] = useState<DailySummaryData | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const isModalOpen = Boolean(boletinData || unreadNotif);
 
   /**
    * Evalúa si ha llegado la hora configurada para proyectar el resumen matutino del grupo activo.
-   * 
+   *
    * Aislamiento por grupo y protección del Welcome Hub:
    * 1. Solo se ejecuta cuando el usuario se encuentra dentro de las vistas de un grupo activo.
    * 2. Emplea una clave de persistencia en localStorage específica para cada usuario, grupo y fecha:
@@ -67,7 +64,10 @@ export default function GlobalNotificationListener() {
    * 3. Consulta las estadísticas específicas del grupo vía query parameter `group_id`.
    */
   const checkBoletin = useCallback(async () => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('disable_notification_modals') === 'true') {
+    if (
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('disable_notification_modals') === 'true'
+    ) {
       return;
     }
     if (!user || !activeGroup || isExcludedRoute(pathname)) return;
@@ -78,7 +78,7 @@ export default function GlobalNotificationListener() {
       if (localStorage.getItem(seenKey)) return;
 
       const resConfig = await api.get('/api/settings/boletin', {
-        params: { group_id: activeGroup.id }
+        params: { group_id: activeGroup.id },
       });
       const config = resConfig.data;
       if (!config || !config.hora) return;
@@ -90,22 +90,24 @@ export default function GlobalNotificationListener() {
 
       if (now >= targetTime) {
         const resStats = await api.get('/api/notifications/boletin-stats', {
-          params: { group_id: activeGroup.id }
+          params: { group_id: activeGroup.id },
         });
         const fullData = resStats.data;
-        
+
         const filteredData: DailySummaryData = {};
         if (config.phaseValue) filteredData.phase = config.phaseValue;
         if (config.firstPlace) filteredData.firstPlace = fullData.firstPlace;
         if (config.lastPlace) filteredData.lastPlace = fullData.lastPlace;
         if (config.mostBetsWon) filteredData.mostBetsWon = fullData.mostBetsWon;
-        if (config.mostMissions) filteredData.mostMissions = fullData.mostMissions;
+        if (config.mostMissions)
+          filteredData.mostMissions = fullData.mostMissions;
         if (config.duelWinner) filteredData.duelWinner = fullData.duelWinner;
-        if (config.biggestWinner) filteredData.biggestWinner = fullData.biggestWinner;
-        if (config.biggestLoser) filteredData.biggestLoser = fullData.biggestLoser;
+        if (config.biggestWinner)
+          filteredData.biggestWinner = fullData.biggestWinner;
+        if (config.biggestLoser)
+          filteredData.biggestLoser = fullData.biggestLoser;
 
         setBoletinData(filteredData);
-        setIsModalOpen(true);
       }
     } catch {
       // Supresión silenciosa de excepciones transitorias de red
@@ -115,26 +117,27 @@ export default function GlobalNotificationListener() {
   useEffect(() => {
     if (!user) return; // Solo se activa para sesiones autenticadas
 
-    // Comprobación inicial al montar o al cambiar de grupo/ruta
-    checkUnread();
+    // Iniciar el orquestador único de polling de 20s en Zustand
+    const stopPolling = useNotificationStore
+      .getState()
+      .startPolling(activeGroup?.id);
+
+    // Comprobación de boletín
     checkBoletin();
 
-    // Escuchador de disparos reactivos manuales
-    window.addEventListener('force-check-notifications', checkUnread);
+    const handleForceCheck = () => {
+      useNotificationStore.getState().checkUpdates(activeGroup?.id);
+      checkBoletin();
+    };
 
-    // Ciclo de sondeo suave cada 15 segundos mientras no haya modal visible
-    const interval = setInterval(() => {
-      if (!isModalOpen) {
-        checkUnread();
-        checkBoletin();
-      }
-    }, 15000);
+    // Escuchador de disparos reactivos manuales
+    window.addEventListener('force-check-notifications', handleForceCheck);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener('force-check-notifications', checkUnread);
+      stopPolling();
+      window.removeEventListener('force-check-notifications', handleForceCheck);
     };
-  }, [user, isModalOpen, checkBoletin]);
+  }, [user, activeGroup?.id, checkBoletin]);
 
   /**
    * Descarta el boletín del día guardando la clave local aislada por grupo y usuario.
@@ -142,28 +145,12 @@ export default function GlobalNotificationListener() {
   const handleCloseBoletin = () => {
     if (user && activeGroup) {
       const todayDate = new Date().toISOString().split('T')[0];
-      localStorage.setItem(`summary_seen_${user.id}_${activeGroup.id}_${todayDate}`, 'true');
+      localStorage.setItem(
+        `summary_seen_${user.id}_${activeGroup.id}_${todayDate}`,
+        'true'
+      );
     }
-    setIsModalOpen(false);
     setBoletinData(null);
-  };
-
-  /**
-   * Consulta notificaciones prioritarias pendientes de lectura.
-   */
-  const checkUnread = async () => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem('disable_notification_modals') === 'true') {
-      return;
-    }
-    try {
-      const res = await api.get('/api/notifications/unread');
-      if (res.data) {
-        setUnreadNotif(res.data);
-        setIsModalOpen(true);
-      }
-    } catch {
-      // Ignorar fallos de sondeo
-    }
   };
 
   /**
@@ -171,25 +158,17 @@ export default function GlobalNotificationListener() {
    */
   const markAsRead = async () => {
     if (!unreadNotif) return;
-    
-    try {
-      await api.post(`/api/notifications/${unreadNotif.id}/read`);
-    } catch {
-      console.warn("Error marking notification as read");
-    } finally {
-      setIsModalOpen(false);
-      setUnreadNotif(null);
-    }
+    await useNotificationStore.getState().dismissNotification(unreadNotif.id);
   };
 
   if (!isModalOpen) return null;
 
   if (boletinData) {
     return (
-      <DailySummaryModal 
-        forceOpen={true} 
-        previewData={boletinData} 
-        onClosePreview={handleCloseBoletin} 
+      <DailySummaryModal
+        forceOpen={true}
+        previewData={boletinData}
+        onClosePreview={handleCloseBoletin}
       />
     );
   }
@@ -200,43 +179,46 @@ export default function GlobalNotificationListener() {
   if (unreadNotif.config_boletin) {
     if (!activeGroup || isExcludedRoute(pathname)) return null;
     return (
-      <DailySummaryModal 
-        forceOpen={true} 
-        previewData={unreadNotif.config_boletin} 
-        onClosePreview={markAsRead} 
+      <DailySummaryModal
+        forceOpen={true}
+        previewData={unreadNotif.config_boletin}
+        onClosePreview={markAsRead}
       />
     );
   }
 
   // De lo contrario, mostramos el modal de Aviso Inmediato con estética Dracula
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fadeIn">
-      <div className="bg-dracula-card w-full max-w-sm rounded-3xl border-2 border-[#8be9fd]/50 p-6 shadow-[0_0_40px_rgba(139,233,253,0.3)] relative flex flex-col items-center text-center">
-        
+    <div className="animate-fadeIn fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      <div className="bg-dracula-card relative flex w-full max-w-sm flex-col items-center rounded-3xl border-2 border-[#8be9fd]/50 p-6 text-center shadow-[0_0_40px_rgba(139,233,253,0.3)]">
         {/* Ícono superior */}
-        <div className="w-16 h-16 rounded-full bg-[#8be9fd]/20 flex items-center justify-center text-[#8be9fd] mb-4 border border-[#8be9fd]/50 shadow-[0_0_15px_rgba(139,233,253,0.4)] animate-bounce">
+        <div className="mb-4 flex h-16 w-16 animate-bounce items-center justify-center rounded-full border border-[#8be9fd]/50 bg-[#8be9fd]/20 text-[#8be9fd] shadow-[0_0_15px_rgba(139,233,253,0.4)]">
           <BellRing size={32} />
         </div>
 
         {/* Título */}
-        <h2 className="text-xl font-black text-dracula-light uppercase tracking-wide mb-2">
+        <h2 className="text-dracula-light mb-2 text-xl font-black tracking-wide uppercase">
           {unreadNotif.titulo}
         </h2>
-        
+
         {/* Mensaje */}
-        <p className="text-sm text-dracula-gray mb-6 whitespace-pre-wrap leading-relaxed">
+        <p className="text-dracula-gray mb-6 text-sm leading-relaxed whitespace-pre-wrap">
           {unreadNotif.mensaje}
         </p>
-        
+
         {/* Imagen opcional (si tiene) */}
         {unreadNotif.media_url && (
-          <img src={unreadNotif.media_url} alt="Notificación" className="w-full rounded-xl mb-6 max-h-48 object-cover border border-dracula-gray/20" />
+          <img
+            src={unreadNotif.media_url}
+            alt="Notificación"
+            className="border-dracula-gray/20 mb-6 max-h-48 w-full rounded-xl border object-cover"
+          />
         )}
 
         {/* Botón de cierre */}
-        <button 
+        <button
           onClick={markAsRead}
-          className="w-full py-3 rounded-xl font-black text-dracula-base bg-[#8be9fd] hover:bg-[#8be9fd]/80 transition-colors shadow-lg flex justify-center items-center gap-2 uppercase tracking-widest text-sm"
+          className="text-dracula-base flex w-full items-center justify-center gap-2 rounded-xl bg-[#8be9fd] py-3 text-sm font-black tracking-widest uppercase shadow-lg transition-colors hover:bg-[#8be9fd]/80"
         >
           <Check size={18} strokeWidth={3} /> Entendido
         </button>

@@ -1,38 +1,67 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * ============================================================================
+ * PESTAÑA DEL TRIBUNAL DE DUELOS (TabDuelos)
+ * ============================================================================
+ * Permite a los administradores arbitrar y resolver duelos en conflicto:
+ * - Declarar ganador al retador o al retado.
+ * - Declarar empate / anular el reto con reembolso de tokens.
+ * - Aplicar sanciones y multas en QuestCoins por conducta antideportiva.
+ * ============================================================================
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { Trophy, Scale } from 'lucide-react';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
 import { useGroup } from '@/context/GroupContext';
 
+interface AdminDuelItem {
+  id: number;
+  challenger: string;
+  challenged: string;
+  wager: number;
+  game: string;
+  status: string;
+  reported_resolution?: string | null;
+}
+
 export default function TabDuelos() {
   const { activeGroup } = useGroup();
-  const [duels, setDuels] = useState<any[]>([]);
+  const [duels, setDuels] = useState<AdminDuelItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [penalizeAmounts, setPenalizeAmounts] = useState<Record<number, number | ''>>({});
+  const [penalizeAmounts, setPenalizeAmounts] = useState<
+    Record<number, number | ''>
+  >({});
   const [motivoMultas, setMotivoMultas] = useState<Record<number, string>>({});
 
-  const fetchDuels = async () => {
+  const fetchDuels = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api.get('/api/admin/duels', {
-        params: activeGroup?.id ? { group_id: activeGroup.id } : {}
+      const res = await api.get<AdminDuelItem[]>('/api/admin/duels', {
+        params: activeGroup?.id ? { group_id: activeGroup.id } : {},
       });
-      setDuels(res.data);
+      setDuels(res.data || []);
     } catch {
       toast.error('Error al cargar duelos');
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeGroup]);
 
   useEffect(() => {
     fetchDuels();
-  }, [activeGroup?.id]);
+  }, [fetchDuels]);
 
-  const resolveDuel = async (duelId: number, resolution: 'challenger' | 'challenged' | 'draw', penalize: string = 'none', penalizeAmount: number = 0, motivoMulta: string = '') => {
+  const resolveDuel = async (
+    duelId: number,
+    resolution: 'challenger' | 'challenged' | 'draw',
+    penalize: string = 'none',
+    penalizeAmount: number = 0,
+    motivoMulta: string = ''
+  ) => {
     if (penalize !== 'none') {
       if (penalizeAmount <= 0 || !motivoMulta.trim()) {
         toast.error('Debes indicar un importe y un concepto para la multa');
@@ -40,11 +69,11 @@ export default function TabDuelos() {
       }
     }
 
-    const action = api.patch(`/api/admin/duels/${duelId}/resolve`, { 
-      resolution, 
+    const action = api.patch(`/api/admin/duels/${duelId}/resolve`, {
+      resolution,
       penalize,
       penalize_amount: penalizeAmount,
-      motivo_multa: motivoMulta
+      motivo_multa: motivoMulta,
     });
 
     toast.promise(action, {
@@ -57,70 +86,127 @@ export default function TabDuelos() {
     });
   };
 
-  const pendingDuels = duels.filter(d => 
-    d.status === 'validation_winner' || d.status === 'validation_rejected' || d.status === 'accepted'
+  const pendingDuels = duels.filter(
+    (d) =>
+      d.status === 'validation_winner' ||
+      d.status === 'validation_rejected' ||
+      d.status === 'accepted'
   );
 
   if (loading) {
-    return <div className="text-center p-8 text-dracula-gray">Cargando duelos...</div>;
+    return (
+      <div className="text-dracula-gray p-8 text-center">
+        Cargando duelos...
+      </div>
+    );
   }
 
   return (
-    <div className="p-4 animate-fadeIn">
-      <h2 className="text-xl font-bold text-dracula-light mb-6 flex items-center gap-2">
+    <div className="animate-fadeIn p-4">
+      <h2 className="text-dracula-light mb-6 flex items-center gap-2 text-xl font-bold">
         <Scale className="text-[#8be9fd]" /> Tribunal de Duelos
       </h2>
 
       {pendingDuels.length === 0 ? (
-        <div className="text-center p-8 border border-dracula-gray/20 rounded-xl bg-dracula-card/50">
-          <p className="text-dracula-gray">No hay duelos pendientes de resolución.</p>
+        <div className="border-dracula-gray/20 bg-dracula-card/50 rounded-xl border p-8 text-center">
+          <p className="text-dracula-gray">
+            No hay duelos pendientes de resolución.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {pendingDuels.map(duel => (
-            <article key={duel.id} className="bg-dracula-card rounded-xl p-4 border border-dracula-gray/20 relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-dracula-base/80 px-3 py-1 rounded-bl-xl text-[10px] font-bold border-l border-b border-dracula-gray/20 flex items-center gap-1 uppercase">
-                <span className={duel.status === 'validation_winner' ? 'text-dracula-green' : duel.status === 'validation_rejected' ? 'text-dracula-red' : 'text-dracula-yellow'}>
-                  {duel.status === 'validation_winner' ? 'Validar Ganador' : duel.status === 'validation_rejected' ? 'Validar Rechazo' : 'En Curso'}
+          {pendingDuels.map((duel) => (
+            <article
+              key={duel.id}
+              className="bg-dracula-card border-dracula-gray/20 relative overflow-hidden rounded-xl border p-4"
+            >
+              <div className="bg-dracula-base/80 border-dracula-gray/20 absolute top-0 right-0 flex items-center gap-1 rounded-bl-xl border-b border-l px-3 py-1 text-[10px] font-bold uppercase">
+                <span
+                  className={
+                    duel.status === 'validation_winner'
+                      ? 'text-dracula-green'
+                      : duel.status === 'validation_rejected'
+                        ? 'text-dracula-red'
+                        : 'text-dracula-yellow'
+                  }
+                >
+                  {duel.status === 'validation_winner'
+                    ? 'Validar Ganador'
+                    : duel.status === 'validation_rejected'
+                      ? 'Validar Rechazo'
+                      : 'En Curso'}
                 </span>
               </div>
 
-              <div className="flex justify-between items-center mb-4 mt-2">
-                <div className="text-center flex-1">
-                  <div className="text-sm font-bold text-dracula-purple">{duel.challenger}</div>
-                  <div className="text-[10px] text-dracula-gray uppercase">Retador</div>
+              <div className="mt-2 mb-4 flex items-center justify-between">
+                <div className="flex-1 text-center">
+                  <div className="text-dracula-purple text-sm font-bold">
+                    {duel.challenger}
+                  </div>
+                  <div className="text-dracula-gray text-[10px] uppercase">
+                    Retador
+                  </div>
                 </div>
                 <div className="px-4 text-center">
                   <div className="text-dracula-red font-black italic">VS</div>
-                  <div className="text-xs font-bold text-dracula-yellow bg-dracula-base px-2 py-1 rounded mt-1 border border-dracula-yellow/20">
+                  <div className="text-dracula-yellow bg-dracula-base border-dracula-yellow/20 mt-1 rounded border px-2 py-1 text-xs font-bold">
                     💰 {duel.wager}
                   </div>
                 </div>
-                <div className="text-center flex-1">
-                  <div className="text-sm font-bold text-dracula-light">{duel.challenged}</div>
-                  <div className="text-[10px] text-dracula-gray uppercase">Retado</div>
+                <div className="flex-1 text-center">
+                  <div className="text-dracula-light text-sm font-bold">
+                    {duel.challenged}
+                  </div>
+                  <div className="text-dracula-gray text-[10px] uppercase">
+                    Retado
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-dracula-base p-3 rounded-lg text-center text-sm text-dracula-light mb-4 border border-dracula-gray/20">
-                <span className="block text-[10px] text-dracula-gray uppercase font-bold mb-1">El Reto</span>
+              <div className="bg-dracula-base text-dracula-light border-dracula-gray/20 mb-4 rounded-lg border p-3 text-center text-sm">
+                <span className="text-dracula-gray mb-1 block text-[10px] font-bold uppercase">
+                  El Reto
+                </span>
                 {duel.game}
               </div>
 
               {duel.reported_resolution && (
-                <div className="mb-4 text-center text-xs font-semibold text-dracula-yellow bg-dracula-yellow/10 p-2 rounded-lg border border-dracula-yellow/20">
+                <div className="text-dracula-yellow bg-dracula-yellow/10 border-dracula-yellow/20 mb-4 rounded-lg border p-2 text-center text-xs font-semibold">
                   {(() => {
                     if (duel.reported_resolution.includes(':')) {
-                      const [reporter, outcome] = duel.reported_resolution.split(':');
-                      const reporterName = reporter === 'challenger' ? duel.challenger : duel.challenged;
-                      const outcomeText = outcome === 'draw' ? 'Empate' : outcome === 'challenger' ? duel.challenger : duel.challenged;
-                      return <>El jugador <span className="font-black text-[#8be9fd] mx-1">{reporterName}</span> reporta: <span className="font-bold ml-1">{outcomeText}</span></>;
+                      const [reporter, outcome] =
+                        duel.reported_resolution.split(':');
+                      const reporterName =
+                        reporter === 'challenger'
+                          ? duel.challenger
+                          : duel.challenged;
+                      const outcomeText =
+                        outcome === 'draw'
+                          ? 'Empate'
+                          : outcome === 'challenger'
+                            ? duel.challenger
+                            : duel.challenged;
+                      return (
+                        <>
+                          El jugador{' '}
+                          <span className="mx-1 font-black text-[#8be9fd]">
+                            {reporterName}
+                          </span>{' '}
+                          reporta:{' '}
+                          <span className="ml-1 font-bold">{outcomeText}</span>
+                        </>
+                      );
                     }
                     return duel.reported_resolution === 'draw' ? (
                       'El jugador reporta un Empate'
                     ) : (
                       <>
-                        El jugador reporta victoria de: <span className="font-black text-[#8be9fd] text-sm ml-1">{duel.reported_resolution === 'challenger' ? duel.challenger : duel.challenged}</span>
+                        El jugador reporta victoria de:{' '}
+                        <span className="ml-1 text-sm font-black text-[#8be9fd]">
+                          {duel.reported_resolution === 'challenger'
+                            ? duel.challenger
+                            : duel.challenged}
+                        </span>
                       </>
                     );
                   })()}
@@ -128,49 +214,76 @@ export default function TabDuelos() {
               )}
 
               {duel.status === 'validation_rejected' && (
-                <div className="mb-4 text-center text-xs font-semibold text-dracula-red bg-dracula-red/10 p-2 rounded-lg border border-dracula-red/20">
-                  El jugador retado ha rechazado este duelo por ser imposible o por cobardía.
+                <div className="text-dracula-red bg-dracula-red/10 border-dracula-red/20 mb-4 rounded-lg border p-2 text-center text-xs font-semibold">
+                  El jugador retado ha rechazado este duelo por ser imposible o
+                  por cobardía.
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-dracula-gray/20">
-                <div className="flex flex-col gap-1.5 mb-2">
+              <div className="border-dracula-gray/20 mt-4 flex flex-col gap-2 border-t pt-4">
+                <div className="mb-2 flex flex-col gap-1.5">
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest block text-center mb-1">
+                      <label className="text-dracula-gray mb-1 block text-center text-[10px] font-bold tracking-widest uppercase">
                         Multa (Tokens)
                       </label>
-                      <TokenAmountInput 
-                        placeholder="0" 
+                      <TokenAmountInput
+                        placeholder="0"
                         min={1}
                         value={penalizeAmounts[duel.id] ?? ''}
-                        onChange={(val) => setPenalizeAmounts({...penalizeAmounts, [duel.id]: val})}
-                        className="w-full bg-dracula-base rounded-lg py-2 pl-9 pr-2 text-sm font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
+                        onChange={(val) =>
+                          setPenalizeAmounts({
+                            ...penalizeAmounts,
+                            [duel.id]: val,
+                          })
+                        }
+                        className="bg-dracula-base text-dracula-red border-dracula-gray/20 focus:border-dracula-red w-full rounded-lg border py-2 pr-2 pl-9 text-sm font-bold focus:outline-none"
                       />
                     </div>
                     <div className="flex-[2]">
-                      <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest block text-center mb-1">
+                      <label className="text-dracula-gray mb-1 block text-center text-[10px] font-bold tracking-widest uppercase">
                         Motivo Multa
                       </label>
-                      <input 
-                        type="text" 
-                        placeholder="Motivo de la penalización" 
+                      <input
+                        type="text"
+                        placeholder="Motivo de la penalización"
                         value={motivoMultas[duel.id] ?? ''}
-                        onChange={(e) => setMotivoMultas({...motivoMultas, [duel.id]: e.target.value})}
-                        className="w-full bg-dracula-base rounded-lg py-2 px-3 text-sm text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
+                        onChange={(e) =>
+                          setMotivoMultas({
+                            ...motivoMultas,
+                            [duel.id]: e.target.value,
+                          })
+                        }
+                        className="bg-dracula-base text-dracula-light border-dracula-gray/20 focus:border-dracula-red w-full rounded-lg border px-3 py-2 text-sm focus:outline-none"
                       />
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-1">
-                    <button 
-                      onClick={() => resolveDuel(duel.id, 'draw', 'challenger', Number(penalizeAmounts[duel.id] || 0), motivoMultas[duel.id] || '')}
-                      className="flex-1 py-2 bg-dracula-red/10 hover:bg-dracula-red/20 text-dracula-red border border-dracula-red/30 rounded-lg text-xs font-bold transition-colors"
+                  <div className="mt-1 flex gap-2">
+                    <button
+                      onClick={() =>
+                        resolveDuel(
+                          duel.id,
+                          'draw',
+                          'challenger',
+                          Number(penalizeAmounts[duel.id] || 0),
+                          motivoMultas[duel.id] || ''
+                        )
+                      }
+                      className="bg-dracula-red/10 hover:bg-dracula-red/20 text-dracula-red border-dracula-red/30 flex-1 rounded-lg border py-2 text-xs font-bold transition-colors"
                     >
                       Multar al Retador
                     </button>
-                    <button 
-                      onClick={() => resolveDuel(duel.id, 'draw', 'challenged', Number(penalizeAmounts[duel.id] || 0), motivoMultas[duel.id] || '')}
-                      className="flex-1 py-2 bg-dracula-red/10 hover:bg-dracula-red/20 text-dracula-red border border-dracula-red/30 rounded-lg text-xs font-bold transition-colors"
+                    <button
+                      onClick={() =>
+                        resolveDuel(
+                          duel.id,
+                          'draw',
+                          'challenged',
+                          Number(penalizeAmounts[duel.id] || 0),
+                          motivoMultas[duel.id] || ''
+                        )
+                      }
+                      className="bg-dracula-red/10 hover:bg-dracula-red/20 text-dracula-red border-dracula-red/30 flex-1 rounded-lg border py-2 text-xs font-bold transition-colors"
                     >
                       Multar al Retado
                     </button>
@@ -178,31 +291,31 @@ export default function TabDuelos() {
                 </div>
 
                 {duel.status === 'validation_rejected' ? (
-                  <button 
+                  <button
                     onClick={() => resolveDuel(duel.id, 'draw', 'none', 0)}
-                    className="w-full py-2 bg-dracula-gray/10 hover:bg-dracula-gray/20 text-dracula-light border border-dracula-gray/20 rounded-lg text-xs font-bold transition-colors"
+                    className="bg-dracula-gray/10 hover:bg-dracula-gray/20 text-dracula-light border-dracula-gray/20 w-full rounded-lg border py-2 text-xs font-bold transition-colors"
                   >
                     Aceptar Rechazo (Anular)
                   </button>
                 ) : (
                   <>
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={() => resolveDuel(duel.id, 'challenger')}
-                        className="flex-1 py-2 bg-dracula-purple/20 hover:bg-dracula-purple/30 text-dracula-purple border border-dracula-purple/30 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                        className="bg-dracula-purple/20 hover:bg-dracula-purple/30 text-dracula-purple border-dracula-purple/30 flex flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-xs font-bold transition-colors"
                       >
                         <Trophy size={14} /> Gana {duel.challenger}
                       </button>
-                      <button 
+                      <button
                         onClick={() => resolveDuel(duel.id, 'challenged')}
-                        className="flex-1 py-2 bg-dracula-green/20 hover:bg-dracula-green/30 text-dracula-green border border-dracula-green/30 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1"
+                        className="bg-dracula-green/20 hover:bg-dracula-green/30 text-dracula-green border-dracula-green/30 flex flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-xs font-bold transition-colors"
                       >
                         <Trophy size={14} /> Gana {duel.challenged}
                       </button>
                     </div>
-                    <button 
+                    <button
                       onClick={() => resolveDuel(duel.id, 'draw')}
-                      className="w-full py-2 bg-dracula-gray/10 hover:bg-dracula-gray/20 text-dracula-light border border-dracula-gray/20 rounded-lg text-xs font-bold transition-colors"
+                      className="bg-dracula-gray/10 hover:bg-dracula-gray/20 text-dracula-light border-dracula-gray/20 w-full rounded-lg border py-2 text-xs font-bold transition-colors"
                     >
                       Anular / Empate
                     </button>

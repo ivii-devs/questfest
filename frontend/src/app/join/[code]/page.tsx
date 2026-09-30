@@ -24,7 +24,7 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
 
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const { refreshGroups, setActiveGroupById } = useGroup();
+  const { refreshGroups } = useGroup();
 
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -53,12 +53,22 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
       router.push('/feed');
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };
-      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
-        console.warn('[DeepLinkJoin] Validación de negocio:', getApiErrorMessage(error));
+      if (
+        err.response?.status &&
+        err.response.status >= 400 &&
+        err.response.status < 500
+      ) {
+        console.warn(
+          '[DeepLinkJoin] Validación de negocio:',
+          getApiErrorMessage(error)
+        );
       } else {
         console.error('[DeepLinkJoin] Error inesperado al unirse:', error);
       }
-      const errorMessage = getApiErrorMessage(error, 'No se pudo procesar la invitación');
+      const errorMessage = getApiErrorMessage(
+        error,
+        'No se pudo procesar la invitación'
+      );
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -66,38 +76,44 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-black text-dracula-light flex flex-col items-center justify-center p-4">
-      <div className="bg-dracula-card border border-dracula-gray/30 rounded-3xl w-full max-w-md p-6 shadow-2xl relative overflow-hidden">
+    <main className="text-dracula-light flex min-h-screen flex-col items-center justify-center bg-black p-4">
+      <div className="bg-dracula-card border-dracula-gray/30 relative w-full max-w-md overflow-hidden rounded-3xl border p-6 shadow-2xl">
         {/* Cabecera con efecto glow */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-dracula-purple to-[#ff79c6] flex items-center justify-center text-dracula-base font-black text-2xl mx-auto mb-3 shadow-[0_0_20px_rgba(189,147,249,0.4)]">
+        <div className="mb-6 text-center">
+          <div className="from-dracula-purple text-dracula-base mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-tr to-[#ff79c6] text-2xl font-black shadow-[0_0_20px_rgba(189,147,249,0.4)]">
             <Sparkles size={32} />
           </div>
-          <h1 className="text-xl font-black text-dracula-light tracking-wide uppercase">
+          <h1 className="text-dracula-light text-xl font-black tracking-wide uppercase">
             Invitación de Grupo
           </h1>
-          <p className="text-xs text-dracula-gray mt-1">
+          <p className="text-dracula-gray mt-1 text-xs">
             Has sido invitado a competir en una comunidad de QuestFest
           </p>
         </div>
 
         {/* Tarjeta del Código */}
-        <div className="bg-dracula-base border border-dracula-purple/40 rounded-2xl p-4 text-center mb-5">
-          <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest block mb-1">
+        <div className="bg-dracula-base border-dracula-purple/40 mb-5 rounded-2xl border p-4 text-center">
+          <span className="text-dracula-gray mb-1 block text-[10px] font-bold tracking-widest uppercase">
             Código de Acceso
           </span>
-          <span className="text-2xl font-black font-mono tracking-widest text-dracula-purple">
+          <span className="text-dracula-purple font-mono text-2xl font-black tracking-widest">
             {code}
           </span>
         </div>
 
         <form onSubmit={handleJoin} className="space-y-4">
           <div>
-            <label htmlFor="join-group-password" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1.5">
+            <label
+              htmlFor="join-group-password"
+              className="text-dracula-gray mb-1.5 block text-xs font-bold tracking-wider uppercase"
+            >
               Contraseña del Grupo (Si fue establecida)
             </label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
+              <Lock
+                size={18}
+                className="text-dracula-gray absolute top-1/2 left-3 -translate-y-1/2"
+              />
               <input
                 id="join-group-password"
                 name="groupPassword"
@@ -106,7 +122,7 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Clave de seguridad del grupo"
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-purple transition-all"
+                className="bg-dracula-base border-dracula-gray/30 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-purple w-full rounded-xl border py-2.5 pr-3 pl-10 text-base transition-all focus:outline-none"
               />
             </div>
           </div>
@@ -115,14 +131,14 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
             <button
               type="button"
               onClick={() => router.push('/groups')}
-              className="flex-1 py-3 px-4 rounded-xl border border-dracula-gray/30 text-dracula-gray font-bold text-xs uppercase tracking-wider hover:bg-dracula-base transition-colors btn-press"
+              className="border-dracula-gray/30 text-dracula-gray hover:bg-dracula-base btn-press flex-1 rounded-xl border px-4 py-3 text-xs font-bold tracking-wider uppercase transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-dracula-purple to-[#ff79c6] text-dracula-base font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(189,147,249,0.3)] hover:opacity-95 transition-opacity disabled:opacity-50 btn-press"
+              className="from-dracula-purple text-dracula-base btn-press flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r to-[#ff79c6] px-4 py-3 text-xs font-black tracking-wider uppercase shadow-[0_0_15px_rgba(189,147,249,0.3)] transition-opacity hover:opacity-95 disabled:opacity-50"
             >
               <span>{submitting ? 'Entrando...' : 'Unirme'}</span>
               <ArrowRight size={16} />
@@ -131,7 +147,7 @@ export default function DeepLinkJoinPage({ params }: JoinPageProps) {
         </form>
 
         <div className="mt-5 text-center">
-          <span className="text-[10px] text-dracula-gray flex items-center justify-center gap-1">
+          <span className="text-dracula-gray flex items-center justify-center gap-1 text-[10px]">
             <ShieldCheck size={12} className="text-dracula-green" />
             Invitación verificada por el motor de QuestFest
           </span>

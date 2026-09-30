@@ -19,8 +19,12 @@ interface JoinGroupModalProps {
  * su código de invitación (formato QF-XXXXX) y contraseña opcional.
  * Al ingresar, al usuario se le asigna el rol 'member' y un saldo inicial de 100 QuestCoins.
  */
-export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: JoinGroupModalProps) {
-  const { refreshGroups, setActiveGroupById } = useGroup();
+export default function JoinGroupModal({
+  isOpen,
+  onClose,
+  defaultCode = '',
+}: JoinGroupModalProps) {
+  const { refreshGroups } = useGroup();
   const router = useRouter();
 
   const [codigo, setCodigo] = useState(defaultCode);
@@ -50,7 +54,9 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
       };
 
       const res = await api.post('/api/groups/join', payload);
-      toast.success(res.data?.message || '¡Te has unido al grupo correctamente!');
+      toast.success(
+        res.data?.message || '¡Te has unido al grupo correctamente!'
+      );
 
       // Recargar grupos en el contexto y seleccionar el nuevo de forma atómica
       const newGroupId = res.data?.id || res.data?.grupo?.id;
@@ -61,12 +67,25 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
       router.push('/feed');
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };
-      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
-        console.warn('[JoinGroupModal] Validación de negocio:', getApiErrorMessage(error));
+      if (
+        err.response?.status &&
+        err.response.status >= 400 &&
+        err.response.status < 500
+      ) {
+        console.warn(
+          '[JoinGroupModal] Validación de negocio:',
+          getApiErrorMessage(error)
+        );
       } else {
-        console.error('[JoinGroupModal] Error inesperado al unirse al grupo:', error);
+        console.error(
+          '[JoinGroupModal] Error inesperado al unirse al grupo:',
+          error
+        );
       }
-      const errorMessage = getApiErrorMessage(error, 'Error al unirse al grupo');
+      const errorMessage = getApiErrorMessage(
+        error,
+        'Error al unirse al grupo'
+      );
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -74,17 +93,19 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
   };
 
   return (
-    <div className="fixed inset-0 -bottom-12 min-h-[100lvh] h-[100lvh] w-full z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pb-safe-bottom animate-fade-in">
-      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto">
+    <div className="pb-safe-bottom animate-fade-in fixed inset-0 -bottom-12 z-50 flex h-[100lvh] min-h-[100lvh] w-full items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      <div className="bg-dracula-card border-dracula-gray/30 relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border p-6 shadow-2xl">
         {/* Encabezado del Modal */}
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-dracula-gray/20">
-          <div className="flex items-center gap-2 text-dracula-cyan">
+        <div className="border-dracula-gray/20 mb-5 flex items-center justify-between border-b pb-3">
+          <div className="text-dracula-cyan flex items-center gap-2">
             <UserPlus size={22} />
-            <h2 className="text-lg font-black text-dracula-light uppercase tracking-wider">Unirse a un Grupo</h2>
+            <h2 className="text-dracula-light text-lg font-black tracking-wider uppercase">
+              Unirse a un Grupo
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-dracula-gray hover:text-dracula-light p-1 rounded-lg transition-colors"
+            className="text-dracula-gray hover:text-dracula-light rounded-lg p-1 transition-colors"
             aria-label="Cerrar modal"
           >
             <X size={20} />
@@ -92,17 +113,24 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-xs text-dracula-gray leading-relaxed">
-            Introduce el código proporcionado por el administrador de tu grupo para unirte.
+          <p className="text-dracula-gray text-xs leading-relaxed">
+            Introduce el código proporcionado por el administrador de tu grupo
+            para unirte.
           </p>
 
           {/* Código de Invitación */}
           <div>
-            <label htmlFor="join-modal-code" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+            <label
+              htmlFor="join-modal-code"
+              className="text-dracula-gray mb-1 block text-xs font-bold tracking-wider uppercase"
+            >
               Código de Invitación (QF-XXXXX) *
             </label>
             <div className="relative">
-              <KeyRound size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
+              <KeyRound
+                size={18}
+                className="text-dracula-gray absolute top-1/2 left-3 -translate-y-1/2"
+              />
               <input
                 id="join-modal-code"
                 name="groupInviteCode"
@@ -112,18 +140,24 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
                 value={codigo}
                 onChange={(e) => setCodigo(e.target.value.toUpperCase())}
                 placeholder="QF-A1B2C"
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base font-mono tracking-widest text-dracula-cyan placeholder-dracula-gray/50 uppercase focus:outline-none focus:border-dracula-cyan transition-all"
+                className="bg-dracula-base border-dracula-gray/30 text-dracula-cyan placeholder-dracula-gray/50 focus:border-dracula-cyan w-full rounded-xl border py-2.5 pr-3 pl-10 font-mono text-base tracking-widest uppercase transition-all focus:outline-none"
               />
             </div>
           </div>
 
           {/* Contraseña del Grupo si aplica */}
           <div>
-            <label htmlFor="join-modal-password" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+            <label
+              htmlFor="join-modal-password"
+              className="text-dracula-gray mb-1 block text-xs font-bold tracking-wider uppercase"
+            >
               Contraseña del Grupo
             </label>
             <div className="relative">
-              <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
+              <Lock
+                size={18}
+                className="text-dracula-gray absolute top-1/2 left-3 -translate-y-1/2"
+              />
               <input
                 id="join-modal-password"
                 name="groupPassword"
@@ -132,7 +166,7 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Dejar en blanco si no tiene"
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-sm text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-cyan transition-all"
+                className="bg-dracula-base border-dracula-gray/30 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-cyan w-full rounded-xl border py-2.5 pr-3 pl-10 text-sm transition-all focus:outline-none"
               />
             </div>
           </div>
@@ -142,14 +176,14 @@ export default function JoinGroupModal({ isOpen, onClose, defaultCode = '' }: Jo
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-dracula-gray/30 text-dracula-gray font-bold text-sm hover:bg-dracula-base transition-colors"
+              className="border-dracula-gray/30 text-dracula-gray hover:bg-dracula-base flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-dracula-cyan to-[#50fa7b] text-dracula-base font-black text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(139,233,253,0.3)] hover:opacity-95 transition-opacity disabled:opacity-50"
+              className="from-dracula-cyan text-dracula-base flex-1 rounded-xl bg-gradient-to-r to-[#50fa7b] px-4 py-2.5 text-sm font-black tracking-wider uppercase shadow-[0_0_15px_rgba(139,233,253,0.3)] transition-opacity hover:opacity-95 disabled:opacity-50"
             >
               {submitting ? 'Verificando...' : 'Unirme'}
             </button>

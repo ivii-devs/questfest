@@ -1,6 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useTransition } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react';
 
 /**
  * Modos de iluminación soportados en QuestFest:
@@ -50,7 +56,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 /**
  * Proveedor global del Sistema de Temas y Paletas Cromáticas Híbridas.
- * 
+ *
  * Gestiona la reactividad del tema, la persistencia en el almacenamiento local (localStorage),
  * la sincronización en vivo con las directivas CSS de document.documentElement y la barra
  * de estado móvil del navegador mediante la etiqueta <meta name="theme-color">.
@@ -66,10 +72,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Lectura inicial segura tras el montaje en el cliente
   useEffect(() => {
     try {
-      const savedMode = localStorage.getItem(THEME_MODE_KEY) as ThemeMode | null;
-      const savedPalette = localStorage.getItem(THEME_PALETTE_KEY) as ColorPalette | null;
+      const savedMode = localStorage.getItem(
+        THEME_MODE_KEY
+      ) as ThemeMode | null;
+      const savedPalette = localStorage.getItem(
+        THEME_PALETTE_KEY
+      ) as ColorPalette | null;
 
-      if (savedMode && (savedMode === 'dark' || savedMode === 'light' || savedMode === 'system')) {
+      if (
+        savedMode &&
+        (savedMode === 'dark' ||
+          savedMode === 'light' ||
+          savedMode === 'system')
+      ) {
         setModeState(savedMode);
       }
       if (
@@ -112,8 +127,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       // Actualización dinámica de la barra de estado de Safari iOS / Chrome Android según la paleta activa
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) {
-        const computedBg = window.getComputedStyle(root).getPropertyValue('--theme-app-bg').trim();
-        metaThemeColor.setAttribute('content', computedBg || (currentResolved === 'dark' ? '#000000' : '#f8fafc'));
+        const computedBg = window
+          .getComputedStyle(root)
+          .getPropertyValue('--theme-app-bg')
+          .trim();
+        metaThemeColor.setAttribute(
+          'content',
+          computedBg || (currentResolved === 'dark' ? '#000000' : '#f8fafc')
+        );
       }
     };
 

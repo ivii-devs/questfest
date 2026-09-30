@@ -1,13 +1,19 @@
-import { test as base, Browser, BrowserContext, Page, devices } from '@playwright/test';
+import {
+  test as base,
+  Browser,
+  BrowserContext,
+  Page,
+  devices,
+} from '@playwright/test';
 
 /**
  * Fixture de autenticación y soporte multi-actor para pruebas E2E en QuestFest.
- * 
+ *
  * ¿Por qué este enfoque?
  * Para cumplir con el Principio 4 (escenarios de dificultad media-alta),
  * necesitamos probar interacciones donde dos o más usuarios reales (ej. Admin vs Jugador)
  * actúan en paralelo contra el sistema.
- * 
+ *
  * En lugar de compartir la misma sesión o sobrescribir cookies en un único navegador,
  * este helper permite instanciar múltiples 'BrowserContext' totalmente independientes.
  * Cada contexto almacena sus propias cookies HttpOnly de JWT y estado de almacenamiento,

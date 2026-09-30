@@ -5,7 +5,7 @@
  * VISTA PRINCIPAL DE DUELOS PvP: QuestFest PWA
  * ============================================================================
  * Pantalla de enfrentamientos directos uno contra uno con tokens en custodia (Escrow).
- * 
+ *
  * Flujos disponibles:
  * 1. Duelos En Curso ('activos'): Desafíos pendientes de aceptar, en disputa o en validación.
  *    Filtros rápidos: "Todos", "Míos" (donde participo) y "Pendientes" (retos hacia mí).
@@ -15,39 +15,17 @@
  */
 
 import { useState, useEffect } from 'react';
-import {
-  Swords,
-  Plus,
-  X,
-  User,
-  Check,
-  History,
-  Scale,
-} from 'lucide-react';
+import { Swords, Plus, History } from 'lucide-react';
 import api from '@/lib/axios';
-import toast from 'react-hot-toast';
 import PullToRefresh from '@/components/PullToRefresh';
 import DuelCard from '@/components/DuelCard';
 import { useGroup } from '@/context/GroupContext';
 import GroupSwitcher from '@/components/groups/GroupSwitcher';
-import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import CreateDuelModal from '@/components/duels/CreateDuelModal';
+import DeclareWinnerModal from '@/components/duels/DeclareWinnerModal';
+import { DueloResponse } from '@/types';
 
-export interface DuelItem {
-  id: number;
-  challenger: string;
-  challenged: string;
-  game: string;
-  wager: number;
-  status: string;
-  group_id?: number;
-  winner?: string | null;
-  is_current_user_challenged?: boolean;
-  isCurrentUserChallenged?: boolean;
-  challenger_avatar?: string | null;
-  challenged_avatar?: string | null;
-  fecha_creacion?: string | null;
-  reported_resolution?: string | null;
-}
+export type DuelItem = DueloResponse;
 
 interface ActiveDuelsViewProps {
   duels: DuelItem[];
@@ -62,31 +40,21 @@ interface HistoryDuelsViewProps {
   currentUser: string;
 }
 
-interface CreateDuelModalProps {
-  users: string[];
-  onClose: () => void;
-  onSuccess: () => Promise<void> | void;
-  groupId?: number;
-}
-
-interface DeclareWinnerModalProps {
-  duel: DuelItem;
-  currentUser: string;
-  onClose: () => void;
-  onSuccess: () => Promise<void> | void;
-}
-
 // ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
 export default function DuelsPage() {
   const { activeGroup, refreshGroups } = useGroup();
-  
+
   // Pestaña principal: retos activos vs registro de batallas pasadas
-  const [activeTab, setActiveTab] = useState<'activos' | 'historial'>('activos');
-  
+  const [activeTab, setActiveTab] = useState<'activos' | 'historial'>(
+    'activos'
+  );
+
   // Sub-filtro de duelos activos para priorizar la interacción del usuario
-  const [duelFilter, setDuelFilter] = useState<'todos' | 'mios' | 'pendientes'>('todos');
+  const [duelFilter, setDuelFilter] = useState<'todos' | 'mios' | 'pendientes'>(
+    'todos'
+  );
 
   // Listados de duelos y usuarios del sistema
   const [activeDuels, setActiveDuels] = useState<DuelItem[]>([]);
@@ -124,7 +92,7 @@ export default function DuelsPage() {
     try {
       const params = activeGroup ? { group_id: activeGroup.id } : {};
       const res = await api.get('/api/duelos/', { params });
-      
+
       // Normalizamos el flag camelCase para compatibilidad con DuelCard
       const allDuels: DuelItem[] = res.data.map((d: DuelItem) => ({
         ...d,
@@ -161,17 +129,17 @@ export default function DuelsPage() {
   const [duelToResolve, setDuelToResolve] = useState<DuelItem | null>(null);
 
   return (
-    <div className="app-shell-page bg-black text-dracula-light select-none">
+    <div className="app-shell-page text-dracula-light bg-black select-none">
       {/* --- CABECERA FIJA CON SELECTOR DE GRUPO Y ÁREA SEGURA --- */}
-      <header className="flex-shrink-0 bg-dracula-base/95 backdrop-blur-md z-40 app-shell-header border-b border-dracula-gray/20 pt-safe-top pb-3 px-4 select-none">
-        <div className="flex items-center justify-between gap-3 mb-4">
+      <header className="bg-dracula-base/95 app-shell-header border-dracula-gray/20 pt-safe-top z-40 flex-shrink-0 border-b px-4 pb-3 backdrop-blur-md select-none">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <Swords size={26} className="text-dracula-red" />
             <div>
-              <h1 className="text-lg font-black text-dracula-light uppercase tracking-wide">
+              <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
                 Duelos
               </h1>
-              <span className="text-[10px] text-dracula-gray font-bold block">
+              <span className="text-dracula-gray block text-[10px] font-bold">
                 {activeGroup?.nombre || 'Comunidad'}
               </span>
             </div>
@@ -179,12 +147,12 @@ export default function DuelsPage() {
           <GroupSwitcher />
         </div>
 
-        <div className="flex w-full mb-3 border-b border-dracula-gray/30">
+        <div className="border-dracula-gray/30 mb-3 flex w-full border-b">
           <button
             onClick={() => setActiveTab('activos')}
-            className={`flex-1 pb-3 text-center text-sm font-semibold transition-colors btn-press ${
+            className={`btn-press flex-1 pb-3 text-center text-sm font-semibold transition-colors ${
               activeTab === 'activos'
-                ? 'text-dracula-red border-b-2 border-dracula-red'
+                ? 'text-dracula-red border-dracula-red border-b-2'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -192,9 +160,9 @@ export default function DuelsPage() {
           </button>
           <button
             onClick={() => setActiveTab('historial')}
-            className={`flex-1 pb-3 text-center text-sm font-semibold transition-colors btn-press ${
+            className={`btn-press flex-1 pb-3 text-center text-sm font-semibold transition-colors ${
               activeTab === 'historial'
-                ? 'text-dracula-purple border-b-2 border-dracula-purple'
+                ? 'text-dracula-purple border-dracula-purple border-b-2'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -204,33 +172,33 @@ export default function DuelsPage() {
 
         {/* Sub-filtros (Solo en Activos) */}
         {activeTab === 'activos' && (
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 animate-fadeIn">
+          <div className="hide-scrollbar animate-fadeIn flex gap-2 overflow-x-auto pb-3">
             <button
               onClick={() => setDuelFilter('todos')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap btn-press ${
+              className={`btn-press rounded-full px-4 py-1.5 text-xs font-bold whitespace-nowrap transition-all ${
                 duelFilter === 'todos'
                   ? 'bg-dracula-red text-dracula-base'
-                  : 'bg-dracula-card text-dracula-light border border-dracula-gray/20'
+                  : 'bg-dracula-card text-dracula-light border-dracula-gray/20 border'
               }`}
             >
               Global
             </button>
             <button
               onClick={() => setDuelFilter('mios')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap btn-press ${
+              className={`btn-press rounded-full px-4 py-1.5 text-xs font-bold whitespace-nowrap transition-all ${
                 duelFilter === 'mios'
                   ? 'bg-dracula-yellow text-dracula-base'
-                  : 'bg-dracula-card text-dracula-light border border-dracula-gray/20'
+                  : 'bg-dracula-card text-dracula-light border-dracula-gray/20 border'
               }`}
             >
               Mis Batallas
             </button>
             <button
               onClick={() => setDuelFilter('pendientes')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 btn-press ${
+              className={`btn-press flex items-center gap-1 rounded-full px-4 py-1.5 text-xs font-bold whitespace-nowrap transition-all ${
                 duelFilter === 'pendientes'
                   ? 'bg-dracula-purple text-dracula-light'
-                  : 'bg-dracula-card text-dracula-light border border-dracula-gray/20'
+                  : 'bg-dracula-card text-dracula-light border-dracula-gray/20 border'
               }`}
             >
               Me Toca Responder
@@ -241,7 +209,7 @@ export default function DuelsPage() {
 
       {/* --- RENDERIZADO DE PESTAÑAS CON SCROLL INTERNO AISLADO --- */}
       <PullToRefresh onRefresh={fetchDuels}>
-        <main className="app-shell-scroll p-4 pb-28 flex flex-col gap-4">
+        <main className="app-shell-scroll flex flex-col gap-4 p-4 pb-28">
           {activeTab === 'activos' && (
             <ActiveDuelsView
               duels={activeDuels}
@@ -252,10 +220,7 @@ export default function DuelsPage() {
             />
           )}
           {activeTab === 'historial' && (
-            <HistoryDuelsView
-              duels={historyDuels}
-              currentUser={currentUser}
-            />
+            <HistoryDuelsView duels={historyDuels} currentUser={currentUser} />
           )}
         </main>
       </PullToRefresh>
@@ -263,7 +228,7 @@ export default function DuelsPage() {
       {/* --- BOTÓN FLOTANTE (FAB) CON MICROPULSACIÓN TÁCTIL --- */}
       <button
         onClick={() => setIsChallengeModalOpen(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-dracula-red rounded-full shadow-[0_0_20px_rgba(255,85,85,0.4)] flex items-center justify-center text-dracula-base btn-press z-30"
+        className="bg-dracula-red text-dracula-base btn-press fixed right-4 bottom-20 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-[0_0_20px_rgba(255,85,85,0.4)]"
         aria-label="Lanzar un reto"
       >
         <Plus size={32} strokeWidth={2.5} />
@@ -337,7 +302,7 @@ function ActiveDuelsView({
 
   if (filteredDuels.length === 0) {
     return (
-      <div className="text-center text-dracula-gray mt-10 text-sm">
+      <div className="text-dracula-gray mt-10 text-center text-sm">
         No hay duelos en esta categoría. ¡Reta a alguien!
       </div>
     );
@@ -368,14 +333,17 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
   const filteredDuels = duels.filter((duel) => {
     if (historyFilter === 'todos') return true;
     if (historyFilter === 'ganadas') return duel.winner === currentUser;
-    if (historyFilter === 'perdidas') return duel.winner && duel.winner !== currentUser;
-    if (historyFilter === 'empatadas_multa') return duel.reported_resolution === 'tie_with_penalty';
+    if (historyFilter === 'perdidas')
+      return duel.winner && duel.winner !== currentUser;
+    if (historyFilter === 'empatadas_multa')
+      return duel.reported_resolution === 'tie_with_penalty';
     if (historyFilter === 'con_multa')
       return (
         duel.reported_resolution === 'penalized_challenger' ||
         duel.reported_resolution === 'penalized_challenged'
       );
-    if (historyFilter === 'rechazadas') return duel.status === 'rejected' || duel.status === 'declined';
+    if (historyFilter === 'rechazadas')
+      return duel.status === 'rejected' || duel.status === 'declined';
     if (historyFilter === 'empatadas') {
       return (
         !duel.winner &&
@@ -397,11 +365,11 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
 
   return (
     <>
-      <div className="flex items-center gap-2 text-dracula-gray text-xs justify-center mb-2 font-semibold">
+      <div className="text-dracula-gray mb-2 flex items-center justify-center gap-2 text-xs font-semibold">
         <History size={14} /> Registro de batallas cerradas
       </div>
 
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-3 mb-2 px-1">
+      <div className="hide-scrollbar mb-2 flex gap-2 overflow-x-auto px-1 pb-3">
         {[
           { id: 'todos', label: 'Todos' },
           { id: 'ganadas', label: 'Ganadas' },
@@ -414,10 +382,10 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
           <button
             key={filter.id}
             onClick={() => setHistoryFilter(filter.id)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap btn-press ${
+            className={`btn-press rounded-full px-4 py-1.5 text-xs font-bold whitespace-nowrap transition-all ${
               historyFilter === filter.id
                 ? 'bg-dracula-purple text-dracula-base'
-                : 'bg-dracula-card text-dracula-light border border-dracula-gray/20 hover:border-dracula-purple/50'
+                : 'bg-dracula-card text-dracula-light border-dracula-gray/20 hover:border-dracula-purple/50 border'
             }`}
           >
             {filter.label}
@@ -427,7 +395,9 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
 
       {sortedDuels.length === 0 ? (
         <div className="flex items-center justify-center py-10">
-          <p className="text-dracula-gray text-sm">No hay duelos en esta categoría.</p>
+          <p className="text-dracula-gray text-sm">
+            No hay duelos en esta categoría.
+          </p>
         </div>
       ) : (
         sortedDuels.map((duel) => (
@@ -435,216 +405,5 @@ function HistoryDuelsView({ duels, currentUser }: HistoryDuelsViewProps) {
         ))
       )}
     </>
-  );
-}
-
-// ============================================================================
-// MODALES TÁCTILES PWA
-// ============================================================================
-
-/**
- * Modal para proponer un nuevo duelo.
- * Al enviarse, el backend bloquea automáticamente la apuesta (Escrow) del retador.
- */
-function CreateDuelModal({ users, onClose, onSuccess, groupId }: CreateDuelModalProps) {
-  const [challenged, setChallenged] = useState('');
-  const [game, setGame] = useState('');
-  // Inicializamos el valor en blanco con placeholder sugerido ('100'),
-  // permitiendo edición fluida y auto-selección táctil PWA
-  const [wager, setWager] = useState<number | ''>('');
-
-  const handleSubmit = async () => {
-    if (!challenged || !game || wager === '' || wager <= 0) {
-      toast.error('Rellena todos los campos correctamente');
-      return;
-    }
-    try {
-      await api.post('/api/duelos/', {
-        challenged_username: challenged,
-        game: game,
-        wager: wager,
-        group_id: groupId || undefined,
-      });
-      toast.success('Reto lanzado con éxito');
-      await onSuccess();
-      onClose();
-    } catch {
-      toast.error('Error al lanzar el reto');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dracula-base w-full max-w-md rounded-2xl shadow-2xl border-2 border-dracula-red overflow-hidden flex flex-col scale-in-center">
-        <div className="flex justify-between items-center p-4 border-b border-dracula-gray/20 bg-dracula-card/50">
-          <h3 className="font-bold text-dracula-red text-sm uppercase tracking-wider flex items-center gap-2">
-            <Swords size={18} /> Lanzar un Reto
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-dracula-gray hover:text-dracula-red transition-colors btn-press"
-          >
-            <X size={22} />
-          </button>
-        </div>
-
-        <div className="p-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest flex items-center gap-1">
-              <User size={12} /> ¿A quién retas?
-            </label>
-            <select
-              className="w-full bg-dracula-card rounded-xl p-3 text-base text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-dracula-red cursor-pointer"
-              value={challenged}
-              onChange={(e) => setChallenged(e.target.value)}
-            >
-              <option value="" disabled>
-                Selecciona a tu contrincante...
-              </option>
-              {users.map((friend: string) => (
-                <option key={friend} value={friend}>
-                  {friend}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="duel-game-name" className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest">
-              ¿A qué jugáis?
-            </label>
-            <input
-              id="duel-game-name"
-              name="duelGame"
-              type="text"
-              className="w-full bg-dracula-card rounded-xl p-3 text-base text-dracula-light border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
-              placeholder="Juego o disciplina del duelo"
-              value={game}
-              onChange={(e) => setGame(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="duel-wager-amount" className="text-[10px] font-bold text-dracula-gray uppercase tracking-widest">
-              Tokens en juego
-            </label>
-            <TokenAmountInput
-              id="duel-wager-amount"
-              name="duelWager"
-              min={1}
-              value={wager}
-              onChange={setWager}
-              placeholder="100"
-              icon="💰"
-              className="w-full bg-dracula-card rounded-xl py-3 pl-9 pr-3 text-base font-bold text-dracula-red border border-dracula-gray/20 focus:outline-none focus:border-dracula-red"
-            />
-          </div>
-        </div>
-
-        <div className="p-4 border-t border-dracula-gray/20 bg-dracula-card/20 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-xl font-bold text-xs text-dracula-light bg-dracula-card hover:bg-dracula-gray/30 btn-press"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            className="flex-[2] py-3 rounded-xl font-bold text-xs text-dracula-base bg-dracula-red hover:opacity-90 flex items-center justify-center gap-2 btn-press"
-          >
-            <Swords size={16} /> Confirmar Reto
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Modal para informar el resultado al Tribunal arbitral de QuestFest.
- * Congela la partida en estado 'disputed' o 'pending_admin' para que
- * la administración verifique el vencedor legítimo y liquide los fondos.
- */
-function DeclareWinnerModal({
-  duel,
-  currentUser,
-  onClose,
-  onSuccess,
-}: DeclareWinnerModalProps) {
-  const isChallenger = duel.challenger === currentUser;
-  const opponent = isChallenger ? duel.challenged : duel.challenger;
-
-  const handleResolve = async (resolution: string) => {
-    try {
-      await api.post(`/api/duelos/${duel.id}/action?action=resolve`, {
-        resolution,
-      });
-      toast.success('Resultado enviado al Tribunal');
-      await onSuccess();
-      onClose();
-    } catch {
-      toast.error('Error al enviar el resultado');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-dracula-base w-full max-w-sm rounded-2xl shadow-2xl border-2 border-dracula-purple overflow-hidden flex flex-col scale-in-center text-center">
-        <div className="bg-dracula-purple/20 py-6 flex flex-col items-center justify-center border-b border-dracula-purple/30 relative">
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 text-dracula-gray hover:text-dracula-red transition-colors btn-press"
-          >
-            <X size={20} />
-          </button>
-          <div className="w-14 h-14 bg-dracula-purple rounded-full flex items-center justify-center text-dracula-base shadow-[0_0_20px_rgba(189,147,249,0.5)] mb-2">
-            <Scale size={28} />
-          </div>
-          <h2 className="text-lg font-black text-dracula-light uppercase tracking-widest">
-            Informar al Tribunal
-          </h2>
-        </div>
-
-        <div className="p-6 flex flex-col gap-4">
-          <p className="text-sm text-dracula-gray font-medium">
-            ¿Quién ha ganado{' '}
-            <span className="text-dracula-light font-bold">"{duel.game}"</span>?{' '}
-            <br />
-            <br />
-            Al reportarlo, el duelo quedará congelado hasta que el Administrador
-            confirme la victoria y mueva los{' '}
-            <span className="text-dracula-yellow font-bold">
-              💰 {duel.wager} tokens
-            </span>
-            .
-          </p>
-
-          <div className="flex flex-col gap-3 mt-2">
-            <button
-              onClick={() =>
-                handleResolve(isChallenger ? 'challenger' : 'challenged')
-              }
-              className="w-full py-4 rounded-xl border border-dracula-green bg-dracula-green/10 text-dracula-green font-black uppercase tracking-wider hover:bg-dracula-green/20 transition-colors flex items-center justify-center gap-2 btn-press"
-            >
-              <Check size={18} /> He ganado YO
-            </button>
-            <button
-              onClick={() =>
-                handleResolve(isChallenger ? 'challenged' : 'challenger')
-              }
-              className="w-full py-4 rounded-xl border border-dracula-gray/20 bg-dracula-card text-dracula-light font-black uppercase tracking-wider hover:bg-dracula-gray/30 transition-colors flex items-center justify-center gap-2 btn-press"
-            >
-              Ha ganado {opponent}
-            </button>
-            <button
-              onClick={() => handleResolve('draw')}
-              className="w-full py-2 rounded-lg text-xs font-semibold text-dracula-gray hover:text-dracula-light underline decoration-dracula-gray/30 mt-1 btn-press"
-            >
-              Ha sido un empate / Se canceló
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

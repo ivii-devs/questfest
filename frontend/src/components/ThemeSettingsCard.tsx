@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Moon, Sun, Laptop, Palette, Sparkles, Check } from 'lucide-react';
-import { useTheme, ThemeMode, ColorPalette } from '@/context/ThemeContext';
+import { useTheme, ColorPalette } from '@/context/ThemeContext';
 
 /**
  * Catálogo descriptivo de las Paletas Dinámicas (Multisección).
@@ -54,11 +54,11 @@ const MONO_PALETTES: {
 
 /**
  * Tarjeta de Control de Tema y Paleta Cromática.
- * 
+ *
  * Permite al usuario seleccionar:
  * 1. El modo de iluminación (Oscuro, Claro o Automático del Sistema).
  * 2. La paleta cromática bajo el Modelo Híbrido (Multisección o Monocromática).
- * 
+ *
  * Todo el componente emplea respuestas hápticas visuales elásticas (.btn-press)
  * y respeta las variables de diseño de QuestFest.
  */
@@ -66,17 +66,17 @@ export default function ThemeSettingsCard() {
   const { mode, palette, setMode, setPalette } = useTheme();
 
   return (
-    <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 sm:p-5 shadow-xl space-y-6">
+    <div className="bg-dracula-card border-dracula-gray/20 space-y-6 rounded-2xl border p-4 shadow-xl sm:p-5">
       {/* Cabecera del bloque de Apariencia */}
       <div className="flex items-center gap-3">
-        <div className="p-2.5 bg-dracula-purple/10 text-dracula-purple rounded-xl">
+        <div className="bg-dracula-purple/10 text-dracula-purple rounded-xl p-2.5">
           <Palette size={22} />
         </div>
         <div>
-          <h3 className="text-base font-bold text-dracula-light leading-snug">
+          <h3 className="text-dracula-light text-base leading-snug font-bold">
             Apariencia y Tema
           </h3>
-          <p className="text-xs text-dracula-gray">
+          <p className="text-dracula-gray text-xs">
             Personaliza el modo de luz y la paleta cromática de QuestFest
           </p>
         </div>
@@ -86,17 +86,17 @@ export default function ThemeSettingsCard() {
       {/* SECCIÓN 1: SELECTOR DE MODO (SEGMENTED CONTROL)          */}
       {/* ======================================================== */}
       <div className="space-y-2">
-        <label className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider block">
+        <label className="text-dracula-gray block text-[11px] font-bold tracking-wider uppercase">
           Modo de Iluminación
         </label>
-        <div className="grid grid-cols-3 gap-2 bg-dracula-base/70 p-1.5 rounded-xl border border-dracula-gray/20">
+        <div className="bg-dracula-base/70 border-dracula-gray/20 grid grid-cols-3 gap-2 rounded-xl border p-1.5">
           {/* Opción Oscuro */}
           <button
             type="button"
             onClick={() => setMode('dark')}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 btn-press select-none ${
+            className={`btn-press flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 select-none ${
               mode === 'dark'
-                ? 'bg-dracula-card text-dracula-purple shadow-md border border-dracula-purple/30'
+                ? 'bg-dracula-card text-dracula-purple border-dracula-purple/30 border shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -108,9 +108,9 @@ export default function ThemeSettingsCard() {
           <button
             type="button"
             onClick={() => setMode('light')}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 btn-press select-none ${
+            className={`btn-press flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 select-none ${
               mode === 'light'
-                ? 'bg-dracula-card text-dracula-yellow shadow-md border border-dracula-yellow/30'
+                ? 'bg-dracula-card text-dracula-yellow border-dracula-yellow/30 border shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -122,9 +122,9 @@ export default function ThemeSettingsCard() {
           <button
             type="button"
             onClick={() => setMode('system')}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all duration-200 btn-press select-none ${
+            className={`btn-press flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 select-none ${
               mode === 'system'
-                ? 'bg-dracula-card text-dracula-cyan shadow-md border border-dracula-cyan/30'
+                ? 'bg-dracula-card text-dracula-cyan border-dracula-cyan/30 border shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
@@ -139,15 +139,15 @@ export default function ThemeSettingsCard() {
       {/* ======================================================== */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider">
+          <label className="text-dracula-gray text-[11px] font-bold tracking-wider uppercase">
             Colección Dinámica
           </label>
-          <span className="text-[10px] text-dracula-purple font-semibold flex items-center gap-1">
+          <span className="text-dracula-purple flex items-center gap-1 text-[10px] font-semibold">
             <Sparkles size={11} /> Identidad visual por panel
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {DYNAMIC_PALETTES.map((p) => {
             const isSelected = palette === p.id;
             return (
@@ -155,33 +155,33 @@ export default function ThemeSettingsCard() {
                 key={p.id}
                 type="button"
                 onClick={() => setPalette(p.id)}
-                className={`w-full text-left p-3 rounded-xl border transition-all duration-200 btn-press relative select-none ${
+                className={`btn-press relative w-full rounded-xl border p-3 text-left transition-all duration-200 select-none ${
                   isSelected
-                    ? 'bg-dracula-base/90 border-dracula-purple shadow-md ring-1 ring-dracula-purple/30'
+                    ? 'bg-dracula-base/90 border-dracula-purple ring-dracula-purple/30 shadow-md ring-1'
                     : 'bg-dracula-base/40 border-dracula-gray/20 hover:border-dracula-gray/40'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-dracula-light">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-dracula-light text-xs font-bold">
                     {p.name}
                   </span>
                   {isSelected && (
-                    <span className="w-4 h-4 rounded-full bg-dracula-purple text-dracula-base flex items-center justify-center">
+                    <span className="bg-dracula-purple text-dracula-base flex h-4 w-4 items-center justify-center rounded-full">
                       <Check size={11} strokeWidth={3} />
                     </span>
                   )}
                 </div>
 
                 {/* 4 puntos representativos: Social, Apuestas, Misiones, Duelos */}
-                <div className="flex items-center gap-1.5 pt-2 border-t border-dracula-gray/10">
+                <div className="border-dracula-gray/10 flex items-center gap-1.5 border-t pt-2">
                   {p.previewColors.map((color, idx) => (
                     <span
                       key={idx}
-                      className="w-3.5 h-3.5 rounded-full shadow-inner ring-1 ring-black/20"
+                      className="h-3.5 w-3.5 rounded-full shadow-inner ring-1 ring-black/20"
                       style={{ backgroundColor: color }}
                     />
                   ))}
-                  <span className="text-[9px] text-dracula-gray ml-1">
+                  <span className="text-dracula-gray ml-1 text-[9px]">
                     Feed • Bets • Quests • Duels
                   </span>
                 </div>
@@ -194,12 +194,12 @@ export default function ThemeSettingsCard() {
       {/* ======================================================== */}
       {/* SECCIÓN 3: PALETAS MONOCROMÁTICAS (MINIMAL ACCENT)       */}
       {/* ======================================================== */}
-      <div className="space-y-2.5 pt-1 border-t border-dracula-gray/15">
-        <label className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider block">
+      <div className="border-dracula-gray/15 space-y-2.5 border-t pt-1">
+        <label className="text-dracula-gray block text-[11px] font-bold tracking-wider uppercase">
           Colección Monocromática
         </label>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
           {MONO_PALETTES.map((p) => {
             const isSelected = palette === p.id;
             return (
@@ -207,17 +207,19 @@ export default function ThemeSettingsCard() {
                 key={p.id}
                 type="button"
                 onClick={() => setPalette(p.id)}
-                className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold transition-all duration-200 btn-press select-none ${
+                className={`btn-press flex items-center gap-2 rounded-xl border p-2 text-xs font-bold transition-all duration-200 select-none ${
                   isSelected
-                    ? 'bg-dracula-base/90 border-dracula-light shadow-md ring-1 ring-dracula-light/30 text-dracula-light'
+                    ? 'bg-dracula-base/90 border-dracula-light ring-dracula-light/30 text-dracula-light shadow-md ring-1'
                     : 'bg-dracula-base/40 border-dracula-gray/20 hover:border-dracula-gray/40 text-dracula-gray hover:text-dracula-light'
                 }`}
               >
                 <span
-                  className="w-4 h-4 rounded-full flex-shrink-0 shadow-sm ring-1 ring-black/20 flex items-center justify-center"
+                  className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full shadow-sm ring-1 ring-black/20"
                   style={{ backgroundColor: p.color }}
                 >
-                  {isSelected && <Check size={10} className="text-white" strokeWidth={3} />}
+                  {isSelected && (
+                    <Check size={10} className="text-white" strokeWidth={3} />
+                  )}
                 </span>
                 <span className="truncate text-[11px]">{p.name}</span>
               </button>

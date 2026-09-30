@@ -43,17 +43,22 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
       const rawPosts: Post[] = response.data;
       const mappedPosts: Post[] = rawPosts.map((p) => ({
         ...p,
-        exactTime: formatExactTime(p.time_ago)
+        exactTime: formatExactTime(p.time_ago),
       }));
       setPosts(mappedPosts);
       if (rawPosts.length < 15) setHasMore(false);
 
       if (mappedPosts.length > 0 && typeof window !== 'undefined') {
-        localStorage.setItem(`last_seen_post_id_${groupId || 'global'}`, mappedPosts[0].id.toString());
+        localStorage.setItem(
+          `last_seen_post_id_${groupId || 'global'}`,
+          mappedPosts[0].id.toString()
+        );
       }
     } catch (err: unknown) {
       console.error('Error al cargar el feed inicial:', err);
-      setError('No se pudo conectar con el servidor para cargar las publicaciones.');
+      setError(
+        'No se pudo conectar con el servidor para cargar las publicaciones.'
+      );
     }
   }, [user, groupId]);
 
@@ -67,7 +72,10 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
 
     try {
       setIsLoadingMore(true);
-      const params: Record<string, string | number> = { limit: 15, cursor_id: lastPostId };
+      const params: Record<string, string | number> = {
+        limit: 15,
+        cursor_id: lastPostId,
+      };
       if (groupId) params.group_id = groupId;
 
       const response = await api.get('/api/feed/', { params });
@@ -76,7 +84,7 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
 
       const mappedPosts: Post[] = rawPosts.map((p) => ({
         ...p,
-        exactTime: formatExactTime(p.time_ago)
+        exactTime: formatExactTime(p.time_ago),
       }));
 
       setPosts((prev) => {
@@ -96,7 +104,7 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
    * En lugar de una conexión SSE persistente (que rompería por timeout en funciones serverless y
    * no compartiría memoria de eventos entre réplicas), consultamos periódicamente el endpoint
    * ultra ligero `GET /api/feed/latest-id`.
-   * 
+   *
    * Estrategias de optimización de cuota (Vercel Hobby Tier - 100.000 peticiones/día):
    * 1. Page Visibility API: El sondeo se detiene inmediatamente si la pestaña no está visible (0 peticiones en segundo plano).
    * 2. Temporizador adaptativo de 15 segundos: Consumo controlado (~4 peticiones/minuto por usuario activo).
@@ -122,7 +130,10 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
       if (isCancelled || !user) return;
 
       // Si la pestaña está oculta en segundo plano, no realizamos petición
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState !== 'visible'
+      ) {
         return;
       }
 
@@ -135,12 +146,15 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
         const params: Record<string, string | number> = {};
         if (groupId) params.group_id = groupId;
 
-        const response = await api.get<number>('/api/feed/latest-id', { params });
+        const response = await api.get<number>('/api/feed/latest-id', {
+          params,
+        });
         const serverLatestId = response.data;
 
         // Comprobamos contra el post más reciente actual
         setPosts((currentPosts) => {
-          const clientLatestId = currentPosts.length > 0 ? currentPosts[0].id : 0;
+          const clientLatestId =
+            currentPosts.length > 0 ? currentPosts[0].id : 0;
           if (serverLatestId > clientLatestId) {
             // Se detectó contenido nuevo en el grupo; disparamos actualización de las publicaciones
             fetchInitialPosts();
@@ -149,7 +163,10 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
         });
       } catch (err) {
         // En sondeos de fondo ignoramos fallos intermitentes de red para no alertar innecesariamente al usuario
-        console.debug('Comprobación de novedades del feed en segundo plano:', err);
+        console.debug(
+          'Comprobación de novedades del feed en segundo plano:',
+          err
+        );
       }
     };
 
@@ -168,8 +185,12 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
       window.addEventListener('visibilitychange', handleVisibilityOrFocus);
       window.addEventListener('focus', handleVisibilityOrFocus);
       window.addEventListener('scroll', recordUserActivity, { passive: true });
-      window.addEventListener('touchstart', recordUserActivity, { passive: true });
-      window.addEventListener('mousemove', recordUserActivity, { passive: true });
+      window.addEventListener('touchstart', recordUserActivity, {
+        passive: true,
+      });
+      window.addEventListener('mousemove', recordUserActivity, {
+        passive: true,
+      });
       window.addEventListener('keydown', recordUserActivity, { passive: true });
     }
 
@@ -193,6 +214,6 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
     isLoadingMore,
     error,
     fetchInitialPosts,
-    loadMorePosts
+    loadMorePosts,
   };
 }

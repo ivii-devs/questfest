@@ -21,25 +21,29 @@ export default function LoginPage() {
       // La redirección está manejada en el context (hacia /)
     } catch {
       // Configuramos el mensaje de error y causamos la animación de shake
-      setError("Usuario o contraseña incorrectos");
+      setError('Usuario o contraseña incorrectos');
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden overscroll-none h-[100dvh] w-screen flex items-center justify-center bg-black font-sans">
+    <div className="fixed inset-0 flex h-[100dvh] w-screen items-center justify-center overflow-hidden overscroll-none bg-black font-sans">
       {/* Fondo sólido simple de alta estabilidad */}
       <div className="absolute inset-0 bg-black"></div>
 
       {/* Tarjeta Simple */}
-      <div className="relative z-10 w-full max-w-md p-8 bg-slate-900 border border-slate-700 rounded-2xl shadow-xl mx-4">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-pink-500 to-purple-500 mb-2 tracking-tight">QuestFest</h1>
-          <p className="text-gray-400 text-xs sm:text-sm max-w-xs mx-auto">Misiones reales en fiestas reales</p>
+      <div className="relative z-10 mx-4 w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-8 shadow-xl">
+        <div className="mb-8 text-center">
+          <h1 className="mb-2 bg-gradient-to-r from-amber-400 via-pink-500 to-purple-500 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent">
+            QuestFest
+          </h1>
+          <p className="mx-auto max-w-xs text-xs text-gray-400 sm:text-sm">
+            Misiones reales en fiestas reales
+          </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-900/50 border border-red-700 rounded-lg text-red-300 text-sm text-center">
+          <div className="mb-6 rounded-lg border border-red-700 bg-red-900/50 p-4 text-center text-sm text-red-300">
             {error}
           </div>
         )}
@@ -51,14 +55,19 @@ export default function LoginPage() {
             que los gestores de contraseñas (Google, Apple Keychain, Bitwarden) rellenen credenciales con un solo toque en PWA.
           */}
           <div>
-            <label htmlFor="login-username" className="block text-sm font-medium text-gray-300 mb-2">Usuario</label>
+            <label
+              htmlFor="login-username"
+              className="mb-2 block text-sm font-medium text-gray-300"
+            >
+              Usuario
+            </label>
             <input
               id="login-username"
               name="username"
               type="text"
               autoComplete="username"
               required
-              className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all duration-300"
+              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-base text-white placeholder-gray-500 transition-all duration-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/50 focus:outline-none"
               placeholder="Nombre de usuario"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -66,14 +75,19 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="login-password" className="block text-sm font-medium text-gray-300 mb-2">Contraseña</label>
+            <label
+              htmlFor="login-password"
+              className="mb-2 block text-sm font-medium text-gray-300"
+            >
+              Contraseña
+            </label>
             <input
               id="login-password"
               name="password"
               type="password"
               autoComplete="current-password"
               required
-              className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all duration-300"
+              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-base text-white placeholder-gray-500 transition-all duration-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/50 focus:outline-none"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -83,16 +97,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full py-3.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 active:from-violet-500 active:to-indigo-500 lg:hover:from-violet-500 lg:hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transform active:scale-[0.98] lg:hover:scale-[1.02] transition-all duration-300 btn-press ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+            className={`btn-press w-full transform rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3.5 font-bold text-white shadow-lg transition-all duration-300 active:scale-[0.98] active:from-violet-500 active:to-indigo-500 lg:hover:scale-[1.02] lg:hover:from-violet-500 lg:hover:to-indigo-500 ${isSubmitting ? 'cursor-not-allowed opacity-70' : ''}`}
           >
             {isSubmitting ? 'Iniciando sesión...' : 'Entrar'}
           </button>
         </form>
 
-        <div className="mt-8 text-center border-t border-white/10 pt-6">
-          <p className="text-gray-400 text-sm">
+        <div className="mt-8 border-t border-white/10 pt-6 text-center">
+          <p className="text-sm text-gray-400">
             ¿No tienes cuenta aún?{' '}
-            <Link href="/register" className="text-amber-400 hover:text-amber-300 font-medium transition-colors">
+            <Link
+              href="/register"
+              className="font-medium text-amber-400 transition-colors hover:text-amber-300"
+            >
               Regístrate aquí
             </Link>
           </p>

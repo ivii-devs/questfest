@@ -16,7 +16,7 @@ interface DeleteGroupModalProps {
 
 /**
  * Modal de Seguridad Crítica para Eliminación Definitiva de Comunidades.
- * 
+ *
  * Principios de Diseño:
  * 1. Fricción Intencionada contra Borrados Accidentales: Exige escribir el nombre exacto
  *    de la comunidad para habilitar el botón destructivo.
@@ -70,7 +70,9 @@ export default function DeleteGroupModal({
     try {
       setIsDeleting(true);
       await deleteGroup(groupId);
-      toast.success(`El grupo "${groupName}" ha sido eliminado definitivamente.`);
+      toast.success(
+        `El grupo "${groupName}" ha sido eliminado definitivamente.`
+      );
       if (onSuccess) {
         onSuccess();
       }
@@ -83,26 +85,26 @@ export default function DeleteGroupModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={() => !isDeleting && onClose()}
       aria-modal="true"
       role="dialog"
     >
       <div
-        className="bg-dracula-card border border-dracula-red/50 rounded-2xl p-5 sm:p-6 max-w-md w-full shadow-[0_0_35px_rgba(255,85,85,0.25)] text-dracula-light space-y-4 animate-scale-in"
+        className="bg-dracula-card border-dracula-red/50 text-dracula-light animate-scale-in w-full max-w-md space-y-4 rounded-2xl border p-5 shadow-[0_0_35px_rgba(255,85,85,0.25)] sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera con Iconografía de Alerta Crítica */}
-        <div className="flex items-start justify-between gap-3 border-b border-dracula-gray/20 pb-3">
+        <div className="border-dracula-gray/20 flex items-start justify-between gap-3 border-b pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-dracula-red/20 text-dracula-red flex items-center justify-center shrink-0 border border-dracula-red/30">
+            <div className="bg-dracula-red/20 text-dracula-red border-dracula-red/30 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border">
               <AlertTriangle size={22} />
             </div>
             <div>
-              <h2 className="text-base font-black text-dracula-red tracking-wide">
+              <h2 className="text-dracula-red text-base font-black tracking-wide">
                 Eliminar Grupo Definitivamente
               </h2>
-              <p className="text-[11px] text-dracula-gray font-semibold">
+              <p className="text-dracula-gray text-[11px] font-semibold">
                 Acción destructiva e irreversible
               </p>
             </div>
@@ -112,7 +114,7 @@ export default function DeleteGroupModal({
             type="button"
             onClick={onClose}
             disabled={isDeleting}
-            className="p-1.5 text-dracula-gray hover:text-dracula-light hover:bg-dracula-base rounded-lg transition-colors disabled:opacity-40"
+            className="text-dracula-gray hover:text-dracula-light hover:bg-dracula-base rounded-lg p-1.5 transition-colors disabled:opacity-40"
             aria-label="Cerrar modal"
           >
             <X size={18} />
@@ -120,17 +122,20 @@ export default function DeleteGroupModal({
         </div>
 
         {/* Desglose de Impacto e Información */}
-        <div className="space-y-2.5 text-xs text-dracula-light/90 leading-relaxed">
+        <div className="text-dracula-light/90 space-y-2.5 text-xs leading-relaxed">
           <p>
             Estás a punto de eliminar por completo la comunidad{' '}
-            <strong className="text-dracula-yellow font-black">"{groupName}"</strong>.
+            <strong className="text-dracula-yellow font-black">
+              &ldquo;{groupName}&rdquo;
+            </strong>
+            .
           </p>
 
-          <div className="bg-dracula-base/80 border border-dracula-red/30 rounded-xl p-3 space-y-1.5 text-[11px] text-dracula-gray">
-            <p className="font-bold text-dracula-red uppercase tracking-wider text-[10px]">
+          <div className="bg-dracula-base/80 border-dracula-red/30 text-dracula-gray space-y-1.5 rounded-xl border p-3 text-[11px]">
+            <p className="text-dracula-red text-[10px] font-bold tracking-wider uppercase">
               Se destruirán permanentemente:
             </p>
-            <ul className="list-disc list-inside space-y-1 text-dracula-light/80">
+            <ul className="text-dracula-light/80 list-inside list-disc space-y-1">
               <li>El muro social, comentarios y publicaciones.</li>
               <li>Todas las misiones, retos y evidencias multimedia.</li>
               <li>Las apuestas colectivas, pronósticos y duelos 1vs1.</li>
@@ -142,9 +147,9 @@ export default function DeleteGroupModal({
         {/* Formulario de Confirmación con Validación por Nombre */}
         <form onSubmit={handleDelete} className="space-y-4 pt-1">
           <div>
-            <label className="block text-[11px] font-bold text-dracula-gray mb-1.5">
+            <label className="text-dracula-gray mb-1.5 block text-[11px] font-bold">
               Para confirmar, escribe{' '}
-              <span className="text-dracula-yellow font-black select-all font-mono">
+              <span className="text-dracula-yellow font-mono font-black select-all">
                 {groupName}
               </span>
               :
@@ -156,7 +161,7 @@ export default function DeleteGroupModal({
               onChange={(e) => setConfirmName(e.target.value)}
               placeholder={groupName}
               disabled={isDeleting}
-              className="w-full bg-dracula-base border border-dracula-gray/30 focus:border-dracula-red focus:ring-1 focus:ring-dracula-red rounded-xl p-2.5 text-sm text-dracula-light placeholder:text-dracula-gray/40 focus:outline-none transition-all font-medium"
+              className="bg-dracula-base border-dracula-gray/30 focus:border-dracula-red focus:ring-dracula-red text-dracula-light placeholder:text-dracula-gray/40 w-full rounded-xl border p-2.5 text-sm font-medium transition-all focus:ring-1 focus:outline-none"
             />
           </div>
 
@@ -166,7 +171,7 @@ export default function DeleteGroupModal({
               type="button"
               onClick={onClose}
               disabled={isDeleting}
-              className="flex-1 py-2.5 px-4 bg-dracula-base border border-dracula-gray/30 hover:bg-dracula-gray/10 text-dracula-light font-bold text-xs uppercase tracking-wider rounded-xl transition-colors btn-press disabled:opacity-50"
+              className="bg-dracula-base border-dracula-gray/30 hover:bg-dracula-gray/10 text-dracula-light btn-press flex-1 rounded-xl border px-4 py-2.5 text-xs font-bold tracking-wider uppercase transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -174,7 +179,7 @@ export default function DeleteGroupModal({
             <button
               type="submit"
               disabled={!isMatch || isDeleting}
-              className="flex-1 py-2.5 px-4 bg-dracula-red text-dracula-base font-black text-xs uppercase tracking-wider rounded-xl hover:bg-dracula-red/90 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed btn-press"
+              className="bg-dracula-red text-dracula-base hover:bg-dracula-red/90 btn-press flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-lg transition-all disabled:cursor-not-allowed disabled:opacity-40"
             >
               {isDeleting ? (
                 <>

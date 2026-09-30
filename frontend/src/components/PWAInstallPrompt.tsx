@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Download, X, Share, PlusSquare } from 'lucide-react';
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+}
+
 export default function PWAInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
@@ -17,8 +23,12 @@ export default function PWAInstallPrompt() {
     }
 
     // Detectar si es iOS y no esta corriendo en modo standalone
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+      !(window as unknown as { MSStream?: unknown }).MSStream;
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      Boolean((navigator as unknown as { standalone?: boolean }).standalone);
 
     if (isIOS && !isStandalone) {
       setShowIOSPrompt(true);
@@ -26,14 +36,18 @@ export default function PWAInstallPrompt() {
 
     // Escuchar evento nativo de instalacion en Android/Chrome
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      promptEvent.preventDefault();
+      setDeferredPrompt(promptEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener(
+        'beforeinstallprompt',
+        handleBeforeInstallPrompt
+      );
     };
   }, []);
 
@@ -57,25 +71,33 @@ export default function PWAInstallPrompt() {
   // Render para Android/Chrome con evento beforeinstallprompt
   if (deferredPrompt) {
     return (
-      <div className="fixed bottom-20 left-4 right-4 bg-dracula-card border border-dracula-purple/40 rounded-xl p-4 shadow-2xl z-50 flex items-center justify-between animate-slideUp">
+      <div className="bg-dracula-card border-dracula-purple/40 animate-slideUp fixed right-4 bottom-20 left-4 z-50 flex items-center justify-between rounded-xl border p-4 shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-dracula-purple text-dracula-base font-black rounded-lg flex items-center justify-center text-sm shrink-0">
+          <div className="bg-dracula-purple text-dracula-base flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-black">
             QF
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-dracula-light">Instalar QuestFest App</span>
-            <span className="text-[10px] text-dracula-gray">Acceso rapido y experiencia a pantalla completa</span>
+            <span className="text-dracula-light text-xs font-bold">
+              Instalar QuestFest App
+            </span>
+            <span className="text-dracula-gray text-[10px]">
+              Acceso rapido y experiencia a pantalla completa
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={handleInstallClick}
-            className="bg-dracula-purple text-dracula-base px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+            className="bg-dracula-purple text-dracula-base flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-90"
           >
             <Download size={14} /> Instalar
           </button>
-          <button onClick={handleDismiss} aria-label="Cerrar aviso de instalación" className="text-dracula-gray p-1 hover:text-dracula-light">
+          <button
+            onClick={handleDismiss}
+            aria-label="Cerrar aviso de instalación"
+            className="text-dracula-gray hover:text-dracula-light p-1"
+          >
             <X size={16} />
           </button>
         </div>
@@ -86,18 +108,33 @@ export default function PWAInstallPrompt() {
   // Render instructivo para iOS Safari
   if (showIOSPrompt) {
     return (
-      <div className="fixed bottom-20 left-4 right-4 bg-dracula-card border border-dracula-cyan/40 rounded-xl p-4 shadow-2xl z-50 flex flex-col gap-2 animate-slideUp">
+      <div className="bg-dracula-card border-dracula-cyan/40 animate-slideUp fixed right-4 bottom-20 left-4 z-50 flex flex-col gap-2 rounded-xl border p-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Share size={16} className="text-dracula-cyan" />
-            <span className="text-xs font-bold text-dracula-light">Instalar en tu iPhone</span>
+            <span className="text-dracula-light text-xs font-bold">
+              Instalar en tu iPhone
+            </span>
           </div>
-          <button onClick={handleDismiss} aria-label="Cerrar aviso de instalación" className="text-dracula-gray p-1 hover:text-dracula-light">
+          <button
+            onClick={handleDismiss}
+            aria-label="Cerrar aviso de instalación"
+            className="text-dracula-gray hover:text-dracula-light p-1"
+          >
             <X size={16} />
           </button>
         </div>
-        <p className="text-[11px] text-dracula-gray leading-relaxed">
-          Pulsa el boton <strong className="text-dracula-light">Compartir <Share size={10} className="inline" /></strong> en Safari y luego selecciona <strong className="text-dracula-light">Añadir a pantalla de inicio <PlusSquare size={10} className="inline" /></strong> para instalar QuestFest.
+        <p className="text-dracula-gray text-[11px] leading-relaxed">
+          Pulsa el boton{' '}
+          <strong className="text-dracula-light">
+            Compartir <Share size={10} className="inline" />
+          </strong>{' '}
+          en Safari y luego selecciona{' '}
+          <strong className="text-dracula-light">
+            Añadir a pantalla de inicio{' '}
+            <PlusSquare size={10} className="inline" />
+          </strong>{' '}
+          para instalar QuestFest.
         </p>
       </div>
     );

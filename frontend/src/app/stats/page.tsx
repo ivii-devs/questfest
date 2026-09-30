@@ -12,7 +12,7 @@ import {
   History,
   Clock,
   ShieldCheck,
-  Info
+  Info,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useGroup } from '@/context/GroupContext';
@@ -24,17 +24,28 @@ import Link from 'next/link';
 
 /**
  * Página de Estadísticas e Historial aislada por Grupo (/stats).
- * 
+ *
  * Cumple con el requisito arquitectónico del proyecto:
  * En cada grupo, un miembro cuenta con esta pestaña dedicada para consultar
  * su resumen de actividad y su historial de transacciones (Ledger de doble partida),
  * garantizando que las estadísticas y la economía de QuestCoins no se mezclen entre grupos.
  */
+interface TransactionItem {
+  id: number | string;
+  type: string;
+  amount: number;
+  concept: string;
+  date: string;
+  balance?: number;
+}
+
 export default function GroupStatsPage() {
   const { user } = useAuth();
   const { activeGroup } = useGroup();
 
-  const [activeTab, setActiveTab] = useState<'resumen' | 'historial'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen' | 'historial'>(
+    'resumen'
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   const [stats, setStats] = useState({
@@ -50,7 +61,7 @@ export default function GroupStatsPage() {
     duelsActive: 0,
   });
   const [ranking, setRanking] = useState<number>(0);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<TransactionItem[]>([]);
 
   /**
    * Carga las estadísticas y transacciones del usuario filtradas estrictamente
@@ -85,15 +96,18 @@ export default function GroupStatsPage() {
 
   if (!activeGroup) {
     return (
-      <div className="app-shell-page bg-black text-dracula-light flex flex-col items-center justify-center p-6 text-center select-none">
+      <div className="app-shell-page text-dracula-light flex flex-col items-center justify-center bg-black p-6 text-center select-none">
         <Info size={36} className="text-dracula-purple mb-3" />
-        <h2 className="text-lg font-black uppercase mb-1">No hay un grupo activo seleccionado</h2>
-        <p className="text-xs text-dracula-gray mb-4 max-w-xs">
-          Selecciona un grupo desde el Hub de Bienvenida para consultar su historial y estadísticas.
+        <h2 className="mb-1 text-lg font-black uppercase">
+          No hay un grupo activo seleccionado
+        </h2>
+        <p className="text-dracula-gray mb-4 max-w-xs text-xs">
+          Selecciona un grupo desde el Hub de Bienvenida para consultar su
+          historial y estadísticas.
         </p>
         <Link
           href="/groups"
-          className="py-2 px-5 bg-dracula-purple text-dracula-base font-black text-xs uppercase rounded-xl btn-press"
+          className="bg-dracula-purple text-dracula-base btn-press rounded-xl px-5 py-2 text-xs font-black uppercase"
         >
           Ir al Hub de Grupos
         </Link>
@@ -102,34 +116,34 @@ export default function GroupStatsPage() {
   }
 
   return (
-    <div className="app-shell-page bg-black text-dracula-light select-none">
+    <div className="app-shell-page text-dracula-light bg-black select-none">
       {/* Cabecera de la Página con soporte de Área Segura (iPhone notch) */}
-      <header className="flex-shrink-0 bg-dracula-base/95 backdrop-blur-md z-40 border-b border-dracula-gray/20 pt-safe-top pb-3 px-4 app-shell-header select-none">
-        <div className="flex justify-between items-center mb-3">
+      <header className="bg-dracula-base/95 border-dracula-gray/20 pt-safe-top app-shell-header z-40 flex-shrink-0 border-b px-4 pb-3 backdrop-blur-md select-none">
+        <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart2 size={22} className="text-dracula-purple" />
             <div>
-              <h1 className="text-lg font-black uppercase tracking-wide text-dracula-light">
+              <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
                 Estadísticas del Grupo
               </h1>
-              <span className="text-[11px] text-dracula-purple font-bold">
+              <span className="text-dracula-purple text-[11px] font-bold">
                 {activeGroup.nombre}
               </span>
             </div>
           </div>
           <Link
             href="/groups"
-            className="text-[11px] font-bold text-dracula-gray hover:text-dracula-light bg-dracula-card px-2.5 py-1.5 rounded-lg border border-dracula-gray/20 transition-colors btn-press"
+            className="text-dracula-gray hover:text-dracula-light bg-dracula-card border-dracula-gray/20 btn-press rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-colors"
           >
             Cambiar Grupo
           </Link>
         </div>
 
         {/* Selector de Pestañas: Resumen vs Historial */}
-        <div className="flex bg-dracula-card p-1 rounded-xl border border-dracula-gray/20">
+        <div className="bg-dracula-card border-dracula-gray/20 flex rounded-xl border p-1">
           <button
             onClick={() => setActiveTab('resumen')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 btn-press ${
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
               activeTab === 'resumen'
                 ? 'bg-dracula-purple text-dracula-base shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
@@ -141,7 +155,7 @@ export default function GroupStatsPage() {
 
           <button
             onClick={() => setActiveTab('historial')}
-            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 btn-press ${
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
               activeTab === 'historial'
                 ? 'bg-dracula-purple text-dracula-base shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
@@ -155,106 +169,115 @@ export default function GroupStatsPage() {
 
       <PullToRefresh onRefresh={fetchData}>
         <main className="app-shell-scroll p-4 pb-28">
-          <div className="bg-gradient-to-br from-dracula-card to-dracula-base border border-dracula-purple/30 rounded-2xl p-5 shadow-xl relative overflow-hidden mb-4">
-            <div className="flex justify-between items-start">
+          <div className="from-dracula-card to-dracula-base border-dracula-purple/30 relative mb-4 overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-xl">
+            <div className="flex items-start justify-between">
               <div>
-                <span className="text-[11px] font-bold text-dracula-gray uppercase tracking-wider block mb-1">
+                <span className="text-dracula-gray mb-1 block text-[11px] font-bold tracking-wider uppercase">
                   Tu Saldo en este Grupo
                 </span>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-dracula-yellow">
+                  <span className="text-dracula-yellow text-3xl font-black">
                     {activeGroup.saldo_grupo}
                   </span>
-                  <span className="text-sm font-bold text-dracula-yellow/80">QuestCoins</span>
+                  <span className="text-dracula-yellow/80 text-sm font-bold">
+                    QuestCoins
+                  </span>
                 </div>
               </div>
 
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-wider block mb-1">
+                <span className="text-dracula-gray mb-1 block text-[10px] font-bold tracking-wider uppercase">
                   Posición Ranking
                 </span>
-                <div className="flex items-center gap-1.5 bg-dracula-base/90 border border-dracula-purple/40 px-3 py-1.5 rounded-xl shadow-md">
+                <div className="bg-dracula-base/90 border-dracula-purple/40 flex items-center gap-1.5 rounded-xl border px-3 py-1.5 shadow-md">
                   <Trophy size={16} className="text-dracula-purple" />
-                  <span className="text-base font-black text-dracula-light">
+                  <span className="text-dracula-light text-base font-black">
                     #{ranking > 0 ? ranking : '-'}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-dracula-gray/20 flex justify-between items-center text-xs text-dracula-gray font-semibold">
+            <div className="border-dracula-gray/20 text-dracula-gray mt-4 flex items-center justify-between border-t pt-3 text-xs font-semibold">
               <span className="flex items-center gap-1">
                 <ShieldCheck size={14} className="text-dracula-green" />
-                Rol: <strong className="text-dracula-light uppercase">{activeGroup.rol}</strong>
+                Rol:{' '}
+                <strong className="text-dracula-light uppercase">
+                  {activeGroup.rol}
+                </strong>
               </span>
-              <span>Comunidad: <strong>{activeGroup.nombre}</strong></span>
+              <span>
+                Comunidad: <strong>{activeGroup.nombre}</strong>
+              </span>
             </div>
           </div>
 
           {isLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center gap-3">
-              <div className="w-8 h-8 border-3 border-dracula-purple border-t-transparent rounded-full animate-spin"></div>
-              <span className="text-xs font-bold text-dracula-gray">Cargando métricas...</span>
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <div className="border-dracula-purple h-8 w-8 animate-spin rounded-full border-3 border-t-transparent"></div>
+              <span className="text-dracula-gray text-xs font-bold">
+                Cargando métricas...
+              </span>
             </div>
           ) : activeTab === 'resumen' ? (
             /* --- SUB-PESTAÑA 1: RESUMEN DE ACTIVIDAD --- */
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 {/* Misiones Completadas */}
-                <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-dracula-green/10 text-dracula-green rounded-xl shrink-0">
+                <div className="bg-dracula-card border-dracula-gray/20 flex items-center gap-3 rounded-2xl border p-4">
+                  <div className="bg-dracula-green/10 text-dracula-green shrink-0 rounded-xl p-2.5">
                     <Target size={22} />
                   </div>
                   <div>
-                    <span className="text-xl font-black text-dracula-light block">
+                    <span className="text-dracula-light block text-xl font-black">
                       {stats.missionsCompleted}
                     </span>
-                    <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-wider">
+                    <span className="text-dracula-gray text-[10px] font-bold tracking-wider uppercase">
                       Misiones Hechas
                     </span>
                   </div>
                 </div>
 
                 {/* Apuestas Ganadas */}
-                <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-dracula-yellow/10 text-dracula-yellow rounded-xl shrink-0">
+                <div className="bg-dracula-card border-dracula-gray/20 flex items-center gap-3 rounded-2xl border p-4">
+                  <div className="bg-dracula-yellow/10 text-dracula-yellow shrink-0 rounded-xl p-2.5">
                     <Dice5 size={22} />
                   </div>
                   <div>
-                    <span className="text-xl font-black text-dracula-light block">
+                    <span className="text-dracula-light block text-xl font-black">
                       {stats.betsWon}
                     </span>
-                    <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-wider">
+                    <span className="text-dracula-gray text-[10px] font-bold tracking-wider uppercase">
                       Apuestas Ganadas
                     </span>
                   </div>
                 </div>
 
                 {/* Duelos Ganados */}
-                <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-dracula-red/10 text-dracula-red rounded-xl shrink-0">
+                <div className="bg-dracula-card border-dracula-gray/20 flex items-center gap-3 rounded-2xl border p-4">
+                  <div className="bg-dracula-red/10 text-dracula-red shrink-0 rounded-xl p-2.5">
                     <Swords size={22} />
                   </div>
                   <div>
-                    <span className="text-xl font-black text-dracula-light block">
+                    <span className="text-dracula-light block text-xl font-black">
                       {stats.duelsWon}
                     </span>
-                    <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-wider">
+                    <span className="text-dracula-gray text-[10px] font-bold tracking-wider uppercase">
                       Duelos Ganados
                     </span>
                   </div>
                 </div>
 
                 {/* Apuestas Perdidas */}
-                <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 bg-dracula-gray/10 text-dracula-gray rounded-xl shrink-0">
+                <div className="bg-dracula-card border-dracula-gray/20 flex items-center gap-3 rounded-2xl border p-4">
+                  <div className="bg-dracula-gray/10 text-dracula-gray shrink-0 rounded-xl p-2.5">
                     <TrendingDown size={22} />
                   </div>
                   <div>
-                    <span className="text-xl font-black text-dracula-light block">
+                    <span className="text-dracula-light block text-xl font-black">
                       {stats.betsLost}
                     </span>
-                    <span className="text-[10px] font-bold text-dracula-gray uppercase tracking-wider">
+                    <span className="text-dracula-gray text-[10px] font-bold tracking-wider uppercase">
                       Apuestas Perdidas
                     </span>
                   </div>
@@ -262,23 +285,25 @@ export default function GroupStatsPage() {
               </div>
 
               {/* Balance Histórico del Grupo */}
-              <div className="bg-dracula-card border border-dracula-gray/20 rounded-2xl p-4 space-y-3">
-                <span className="text-xs font-bold text-dracula-gray uppercase tracking-wider block">
+              <div className="bg-dracula-card border-dracula-gray/20 space-y-3 rounded-2xl border p-4">
+                <span className="text-dracula-gray block text-xs font-bold tracking-wider uppercase">
                   Rendimiento de Tokens en este Grupo
                 </span>
-                <div className="flex justify-between items-center py-2 border-b border-dracula-gray/20">
-                  <span className="text-xs text-dracula-light flex items-center gap-2">
-                    <TrendingUp size={16} className="text-dracula-green" /> Total Ganado
+                <div className="border-dracula-gray/20 flex items-center justify-between border-b py-2">
+                  <span className="text-dracula-light flex items-center gap-2 text-xs">
+                    <TrendingUp size={16} className="text-dracula-green" />{' '}
+                    Total Ganado
                   </span>
-                  <span className="text-xs font-black text-dracula-green">
+                  <span className="text-dracula-green text-xs font-black">
                     +{stats.tokensWon || 0} QC
                   </span>
                 </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-xs text-dracula-light flex items-center gap-2">
-                    <TrendingDown size={16} className="text-dracula-red" /> Total Perdido
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-dracula-light flex items-center gap-2 text-xs">
+                    <TrendingDown size={16} className="text-dracula-red" />{' '}
+                    Total Perdido
                   </span>
-                  <span className="text-xs font-black text-dracula-red">
+                  <span className="text-dracula-red text-xs font-black">
                     -{stats.tokensLost || 0} QC
                   </span>
                 </div>
@@ -288,9 +313,9 @@ export default function GroupStatsPage() {
             /* --- SUB-PESTAÑA 2: HISTORIAL DE TRANSACCIONES (LEDGER) --- */
             <div className="space-y-2.5">
               {transactions.length === 0 ? (
-                <div className="py-12 text-center bg-dracula-card/60 border border-dracula-gray/20 rounded-2xl p-6">
+                <div className="bg-dracula-card/60 border-dracula-gray/20 rounded-2xl border p-6 py-12 text-center">
                   <Clock size={28} className="text-dracula-gray mx-auto mb-2" />
-                  <p className="text-xs text-dracula-gray">
+                  <p className="text-dracula-gray text-xs">
                     No hay transacciones registradas en este grupo todavía.
                   </p>
                 </div>
@@ -300,29 +325,33 @@ export default function GroupStatsPage() {
                   return (
                     <div
                       key={tx.id}
-                      className="bg-dracula-card border border-dracula-gray/20 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-sm hover:border-dracula-gray/40 transition-colors"
+                      className="bg-dracula-card border-dracula-gray/20 hover:border-dracula-gray/40 flex items-center justify-between gap-3 rounded-xl border p-3.5 shadow-sm transition-colors"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex min-w-0 items-center gap-3">
                         <div
-                          className={`p-2 rounded-xl shrink-0 ${
+                          className={`shrink-0 rounded-xl p-2 ${
                             isIncome
                               ? 'bg-dracula-green/10 text-dracula-green'
                               : 'bg-dracula-red/10 text-dracula-red'
                           }`}
                         >
-                          {isIncome ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                          {isIncome ? (
+                            <TrendingUp size={18} />
+                          ) : (
+                            <TrendingDown size={18} />
+                          )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-dracula-light truncate">
+                          <p className="text-dracula-light truncate text-xs font-bold">
                             {tx.concept}
                           </p>
-                          <span className="text-[10px] text-dracula-gray">
+                          <span className="text-dracula-gray text-[10px]">
                             {formatSpanishDate(tx.date)}
                           </span>
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
+                      <div className="shrink-0 text-right">
                         <span
                           className={`text-sm font-black ${
                             isIncome ? 'text-dracula-green' : 'text-dracula-red'
@@ -331,7 +360,7 @@ export default function GroupStatsPage() {
                           {isIncome ? `+${tx.amount}` : tx.amount} QC
                         </span>
                         {tx.balance !== undefined && (
-                          <span className="block text-[10px] text-dracula-gray">
+                          <span className="text-dracula-gray block text-[10px]">
                             Saldo: {tx.balance}
                           </span>
                         )}

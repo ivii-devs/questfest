@@ -2,34 +2,46 @@
 
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useNetworkStore } from '@/store/useNetworkStore';
 
 export default function SWRegister() {
   useEffect(() => {
+    // Sincronización reactiva del estado de red online/offline
+    const cleanupNetwork = useNetworkStore.getState().initNetworkListeners();
+
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')
           .then((registration) => {
-            console.log('Service Worker registrado con exito en el scope:', registration.scope);
+            console.log(
+              'Service Worker registrado con exito en el scope:',
+              registration.scope
+            );
 
             registration.onupdatefound = () => {
               const installingWorker = registration.installing;
               if (installingWorker) {
                 installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  if (
+                    installingWorker.state === 'installed' &&
+                    navigator.serviceWorker.controller
+                  ) {
                     toast(
                       (t) => (
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-semibold text-dracula-light">
+                          <span className="text-dracula-light text-xs font-semibold">
                             Nueva versión disponible de la app.
                           </span>
                           <button
                             onClick={() => {
                               toast.dismiss(t.id);
-                              installingWorker.postMessage({ action: 'skipWaiting' });
+                              installingWorker.postMessage({
+                                action: 'skipWaiting',
+                              });
                               window.location.reload();
                             }}
-                            className="bg-dracula-purple text-dracula-base text-xs font-bold px-2.5 py-1 rounded shadow hover:opacity-90 transition-opacity"
+                            className="bg-dracula-purple text-dracula-base rounded px-2.5 py-1 text-xs font-bold shadow transition-opacity hover:opacity-90"
                           >
                             Actualizar
                           </button>
@@ -47,8 +59,11 @@ export default function SWRegister() {
           });
       });
     }
+
+    return () => {
+      cleanupNetwork();
+    };
   }, []);
 
   return null;
 }
-

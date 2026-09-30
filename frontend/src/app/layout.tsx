@@ -11,7 +11,8 @@ import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 export const metadata: Metadata = {
   title: 'QuestFest',
-  description: 'Misiones reales en fiestas reales: la app interactiva y punto de encuentro para tus eventos',
+  description:
+    'Misiones reales en fiestas reales: la app interactiva y punto de encuentro para tus eventos',
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -20,7 +21,11 @@ export const metadata: Metadata = {
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      {
+        url: '/icons/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+      },
     ],
   },
   appleWebApp: {
@@ -48,11 +53,11 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <head>
         {/*
-          * SCRIPT SÍNCRONO ANTI-FOUC (Flash of Unstyled Content):
-          * Ejecuta en el hilo principal antes de pintar el DOM. Lee las preferencias de localStorage
-          * y resuelve el esquema de color del sistema si corresponde, inyectando inmediatamente
-          * 'data-theme' y 'data-palette' en <html> para prevenir cualquier parpadeo de color.
-          */}
+         * SCRIPT SÍNCRONO ANTI-FOUC (Flash of Unstyled Content):
+         * Ejecuta en el hilo principal antes de pintar el DOM. Lee las preferencias de localStorage
+         * y resuelve el esquema de color del sistema si corresponde, inyectando inmediatamente
+         * 'data-theme' y 'data-palette' en <html> para prevenir cualquier parpadeo de color.
+         */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -72,11 +77,22 @@ export default function RootLayout({
           }}
         />
         {/* Enlaces explícitos de icono para Safari en iOS al añadir a la pantalla de inicio */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon-precomposed.png" />
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
+        <link
+          rel="apple-touch-icon-precomposed"
+          sizes="180x180"
+          href="/apple-touch-icon-precomposed.png"
+        />
       </head>
       {/* Contenedor del App Shell nativo: marco inamovible de 100dvh con fondo dinámico del tema */}
-      <body className="antialiased fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[var(--theme-app-bg)] text-dracula-light select-none font-sans" suppressHydrationWarning>
+      <body
+        className="text-dracula-light fixed inset-0 h-[100dvh] w-full overflow-hidden bg-[var(--theme-app-bg)] font-sans antialiased select-none"
+        suppressHydrationWarning
+      >
         <ThemeProvider>
           <AuthProvider>
             <GroupProvider>
@@ -85,14 +101,15 @@ export default function RootLayout({
               <BottomNav />
               <GlobalNotificationListener />
               <PWAInstallPrompt />
-              <Toaster 
-                position="top-center" 
+              <Toaster
+                position="top-center"
                 containerStyle={{
                   top: 'max(1rem, calc(env(safe-area-inset-top, 0px) + 0.85rem))',
                 }}
-                toastOptions={{ 
-                  className: 'font-bold text-sm bg-dracula-card text-dracula-light border border-dracula-gray/20 shadow-2xl' 
-                }} 
+                toastOptions={{
+                  className:
+                    'font-bold text-sm bg-dracula-card text-dracula-light border border-dracula-gray/20 shadow-2xl',
+                }}
               />
             </GroupProvider>
           </AuthProvider>

@@ -5,32 +5,36 @@
  * CONTEXTO DE AUTENTICACIÓN (AuthContext): QuestFest PWA
  * ============================================================================
  * Centraliza la sesión del jugador, el token JWT y su perfil reactivo en toda la app.
- * 
+ * Sincronizado bidireccionalmente con el store de Zustand (useAuthStore).
+ *
  * Decisiones clave de arquitectura móvil:
  * 1. Estrategia Dual de Almacenamiento (localStorage + Cookie):
  *    - `localStorage`: Permite a la SPA y a los interceptores de Axios leer el JWT sincrónicamente.
  *    - `document.cookie`: Permite a los Server Components y middleware de Next.js conocer
  *      la sesión antes de renderizar páginas protegidas en el servidor.
- * 2. Eventos Reactivos Inter-Componentes:
- *    Tras autenticar o refrescar perfil, dispara el evento sintético `force-check-notifications`
- *    en `window` para que el `GlobalNotificationListener` consulte inmediatamente alertas nuevas.
+ * 2. Purga Atómica de Service Worker en Logout:
+ *    Destruye la caché de la aplicación ('questfest-cache-v1') y notifica al Service Worker
+ *    para evitar contaminación cruzada de datos contables entre jugadores en el mismo dispositivo.
  * 3. Fallback Seguro: Si una llamada a `/api/auth/me` falla (token caducado o revocado),
  *    fuerza un `logout()` automático para no dejar al usuario en un estado visual zombi.
  * ============================================================================
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
+import { loginUser, logoutUser, getMe } from '@/services/authService';
+import { Usuario } from '@/types';
 
-export interface User {
-  id: number;
-  username: string;
-  rol: string;
-  saldo_actual: number;
-  bio?: string;
-  avatar_url?: string;
-}
+export type User = Usuario;
 
 interface AuthContextType {
   user: User | null;
@@ -48,20 +52,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const fetchProfile = async () => {
+  /**
+   * Cierra sesión destruyendo el estado local, la cookie expirada, el header de Axios
+   * y purgando la caché de la aplicación en el Service Worker.
+   */
+  const logout = useCallback(async () => {
     try {
-      const response = await api.get('/api/auth/me');
-      setUser(response.data);
-      // Despertamos al gestor de notificaciones para que consulte alertas inmediatamente
-      if (typeof window !== 'undefined') window.dispatchEvent(new Event('force-check-notifications'));
+      await logoutUser();
     } catch {
-      // Si el token no es válido o está expirado, cerramos sesión de inmediato
-      console.error("Token inválido o expirado. Cerrando sesión...");
-      logout();
+      // Ignoramos fallos silenciosamente al limpiar credenciales locales
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token');
+      document.cookie =
+        'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax';
+
+      // Purga atómica en Service Worker
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'CLEAR_APP_CACHE',
+        });
+      }
+
+      if ('caches' in window) {
+        try {
+          await caches.delete('questfest-cache-v1');
+        } catch {
+          // Continuamos si el entorno restringe el borrado directo
+        }
+      }
+    }
+
+    delete api.defaults.headers.common['Authorization'];
+    setUser(null);
+    useAuthStore.getState().setUser(null);
+    router.push('/login');
+  }, [router]);
+
+  const fetchProfile = useCallback(async () => {
+    try {
+      const data = await getMe();
+      setUser(data);
+      useAuthStore.getState().setUser(data);
+
+      // Despertamos al gestor de notificaciones para que consulte alertas inmediatamente
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('force-check-notifications'));
+      }
+    } catch {
+      console.error('Token inválido o expirado. Cerrando sesión...');
+      await logout();
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
 
   /**
    * Actualización optimista del balance local en memoria.
@@ -72,69 +117,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser((prev) => {
       if (!prev) return null;
       const newSaldo = Math.max(0, prev.saldo_actual + delta);
-      return { ...prev, saldo_actual: newSaldo };
+      const updatedUser = { ...prev, saldo_actual: newSaldo };
+      useAuthStore.getState().setUser(updatedUser);
+      return updatedUser;
     });
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('access_token')
+        : null;
     if (token) {
+      api.defaults.headers.common['Authorization'] = 'Bearer ' + token;
       fetchProfile();
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [fetchProfile]);
 
   /**
-   * Inicia sesión enviando credenciales OAuth2 Form URL Encoded al backend.
+   * Inicia sesión enviando credenciales OAuth2 al backend.
    * Guarda el JWT en localStorage y Cookie (`max-age=86400`, 24h), y redirige a /groups.
    */
   const login = async (username: string, password: string) => {
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-
-      const response = await api.post('/api/auth/login', formData.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-
-      const { access_token } = response.data;
+      const { access_token } = await loginUser({ username, password });
       localStorage.setItem('access_token', access_token);
       document.cookie = `access_token=${access_token}; path=/; max-age=86400; samesite=lax`;
-      
+
       api.defaults.headers.common['Authorization'] = 'Bearer ' + access_token;
-      
+
       await fetchProfile();
       // Tras el inicio de sesión exitoso, dirigimos al usuario al Welcome Hub (/groups)
-      // para que seleccione su comunidad o gestione sus grupos activos.
       router.push('/groups');
     } catch (error) {
-      console.error("Error al iniciar sesión:", error);
+      console.error('Error al iniciar sesión:', error);
       throw error;
     }
   };
 
-  /**
-   * Cierra sesión destruyendo el estado local, la cookie expirada y el header de Axios.
-   */
-  const logout = async () => {
-    try {
-      await api.post('/api/auth/logout');
-    } catch {
-      // Ignoramos silenciosamente fallos del endpoint remoto de logout al limpiar credenciales locales
-    }
-    localStorage.removeItem('access_token');
-    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; samesite=lax";
-    delete api.defaults.headers.common['Authorization'];
-    setUser(null);
-    router.push('/login');
-  };
-
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshProfile: fetchProfile, updateBalance }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        logout,
+        refreshProfile: fetchProfile,
+        updateBalance,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

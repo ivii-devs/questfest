@@ -20,8 +20,11 @@ interface CreateGroupModalProps {
  * lo que le otorga acceso al tribunal de arbitraje, gestión de retos y generación de invitaciones.
  * Permite seleccionar una foto o logo representativo directamente desde la galería del dispositivo móvil.
  */
-export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
-  const { refreshGroups, setActiveGroupById } = useGroup();
+export default function CreateGroupModal({
+  isOpen,
+  onClose,
+}: CreateGroupModalProps) {
+  const { refreshGroups } = useGroup();
   const router = useRouter();
 
   const [nombre, setNombre] = useState('');
@@ -105,18 +108,21 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
       }
 
       // 2. Crear grupo con saldo inicial configurado (por defecto 100 si se dejó vacío)
-      const payload: Record<string, any> = {
+      const payload: Record<string, unknown> = {
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         icono_url: icono_url,
         avatar_url: icono_url,
         password: hasPassword ? password.trim() : undefined,
-        saldo_inicial: saldoInicial === '' ? 100 : Math.max(0, Math.min(10000, Number(saldoInicial))),
+        saldo_inicial:
+          saldoInicial === ''
+            ? 100
+            : Math.max(0, Math.min(10000, Number(saldoInicial))),
       };
 
       const res = await api.post('/api/groups/', payload);
       toast.success('¡Grupo creado exitosamente!');
-      
+
       // Actualizamos la lista de grupos y establecemos el nuevo grupo como activo de forma atómica
       await refreshGroups(res.data?.id);
 
@@ -126,10 +132,20 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
       router.push('/feed');
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };
-      if (err.response?.status && err.response.status >= 400 && err.response.status < 500) {
-        console.warn('[CreateGroupModal] Validación de negocio:', getApiErrorMessage(error));
+      if (
+        err.response?.status &&
+        err.response.status >= 400 &&
+        err.response.status < 500
+      ) {
+        console.warn(
+          '[CreateGroupModal] Validación de negocio:',
+          getApiErrorMessage(error)
+        );
       } else {
-        console.error('[CreateGroupModal] Error inesperado al crear grupo:', error);
+        console.error(
+          '[CreateGroupModal] Error inesperado al crear grupo:',
+          error
+        );
       }
       const detail = getApiErrorMessage(error, 'No se pudo crear el grupo');
       toast.error(detail);
@@ -139,17 +155,19 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
   };
 
   return (
-    <div className="fixed inset-0 -bottom-12 min-h-[100lvh] h-[100lvh] w-full z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md pb-safe-bottom animate-fade-in">
-      <div className="bg-dracula-card border border-dracula-gray/30 rounded-2xl w-full max-w-md p-6 shadow-2xl relative max-h-[calc(100dvh-2rem)] overflow-y-auto">
+    <div className="pb-safe-bottom animate-fade-in fixed inset-0 -bottom-12 z-50 flex h-[100lvh] min-h-[100lvh] w-full items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      <div className="bg-dracula-card border-dracula-gray/30 relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border p-6 shadow-2xl">
         {/* Cabecera del Modal */}
-        <div className="flex justify-between items-center mb-5 pb-3 border-b border-dracula-gray/20">
-          <div className="flex items-center gap-2 text-dracula-purple">
+        <div className="border-dracula-gray/20 mb-5 flex items-center justify-between border-b pb-3">
+          <div className="text-dracula-purple flex items-center gap-2">
             <Sparkles size={22} className="animate-spin-slow" />
-            <h2 className="text-lg font-black text-dracula-light uppercase tracking-wider">Crear Nuevo Grupo</h2>
+            <h2 className="text-dracula-light text-lg font-black tracking-wider uppercase">
+              Crear Nuevo Grupo
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-dracula-gray hover:text-dracula-light p-1 rounded-lg transition-colors"
+            className="text-dracula-gray hover:text-dracula-light rounded-lg p-1 transition-colors"
             aria-label="Cerrar modal"
           >
             <X size={20} />
@@ -159,11 +177,17 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nombre del Grupo */}
           <div>
-            <label htmlFor="create-group-name" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+            <label
+              htmlFor="create-group-name"
+              className="text-dracula-gray mb-1 block text-xs font-bold tracking-wider uppercase"
+            >
               Nombre del Grupo *
             </label>
             <div className="relative">
-              <Users size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-dracula-gray" />
+              <Users
+                size={18}
+                className="text-dracula-gray absolute top-1/2 left-3 -translate-y-1/2"
+              />
               <input
                 id="create-group-name"
                 name="groupName"
@@ -172,14 +196,17 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Nombre del grupo o evento"
-                className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-purple transition-all"
+                className="bg-dracula-base border-dracula-gray/30 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-purple w-full rounded-xl border py-2.5 pr-3 pl-10 text-base transition-all focus:outline-none"
               />
             </div>
           </div>
 
           {/* Descripción opcional */}
           <div>
-            <label htmlFor="create-group-desc" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+            <label
+              htmlFor="create-group-desc"
+              className="text-dracula-gray mb-1 block text-xs font-bold tracking-wider uppercase"
+            >
               Descripción (Opcional)
             </label>
             <textarea
@@ -189,13 +216,13 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
               onChange={(e) => setDescripcion(e.target.value)}
               placeholder="Descripción o normas del grupo (opcional)..."
               rows={2}
-              className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl p-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-purple transition-all resize-none"
+              className="bg-dracula-base border-dracula-gray/30 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-purple w-full resize-none rounded-xl border p-3 text-base transition-all focus:outline-none"
             />
           </div>
 
           {/* Selector de Foto / Logo desde la Galería */}
           <div>
-            <label className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1.5">
+            <label className="text-dracula-gray mb-1.5 block text-xs font-bold tracking-wider uppercase">
               Foto del Grupo
             </label>
             <input
@@ -207,24 +234,24 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
             />
 
             {imagePreview ? (
-              <div className="relative flex items-center gap-3 p-3 bg-dracula-base border border-dracula-purple/40 rounded-xl">
+              <div className="bg-dracula-base border-dracula-purple/40 relative flex items-center gap-3 rounded-xl border p-3">
                 <img
                   src={imagePreview}
                   alt="Previsualización del logo"
-                  className="w-14 h-14 rounded-xl object-cover border border-dracula-purple shadow"
+                  className="border-dracula-purple h-14 w-14 rounded-xl border object-cover shadow"
                 />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs font-bold text-dracula-light block truncate">
+                <div className="min-w-0 flex-1">
+                  <span className="text-dracula-light block truncate text-xs font-bold">
                     {selectedImage?.name}
                   </span>
-                  <span className="text-[10px] text-dracula-green font-semibold">
+                  <span className="text-dracula-green text-[10px] font-semibold">
                     Foto lista para subir
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={removeSelectedImage}
-                  className="p-2 text-dracula-red hover:bg-dracula-red/10 rounded-lg transition-colors btn-press"
+                  className="text-dracula-red hover:bg-dracula-red/10 btn-press rounded-lg p-2 transition-colors"
                   aria-label="Quitar foto"
                 >
                   <X size={18} />
@@ -234,9 +261,12 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full flex items-center justify-center gap-2.5 p-3.5 bg-dracula-base border border-dashed border-dracula-gray/40 hover:border-dracula-purple/60 rounded-xl text-xs font-bold text-dracula-gray hover:text-dracula-light transition-all group btn-press"
+                className="bg-dracula-base border-dracula-gray/40 hover:border-dracula-purple/60 text-dracula-gray hover:text-dracula-light group btn-press flex w-full items-center justify-center gap-2.5 rounded-xl border border-dashed p-3.5 text-xs font-bold transition-all"
               >
-                <Camera size={18} className="text-dracula-purple group-hover:scale-110 transition-transform" />
+                <Camera
+                  size={18}
+                  className="text-dracula-purple transition-transform group-hover:scale-110"
+                />
                 <span>Seleccionar foto del grupo</span>
               </button>
             )}
@@ -244,7 +274,10 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
 
           {/* Saldo Inicial de QuestCoins */}
           <div>
-            <label htmlFor="create-group-balance" className="block text-xs font-bold text-dracula-gray uppercase tracking-wider mb-1">
+            <label
+              htmlFor="create-group-balance"
+              className="text-dracula-gray mb-1 block text-xs font-bold tracking-wider uppercase"
+            >
               Saldo inicial de QuestCoins
             </label>
             <TokenAmountInput
@@ -255,30 +288,31 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
               value={saldoInicial}
               onChange={setSaldoInicial}
               placeholder="100"
-              className="w-full bg-dracula-base border border-dracula-gray/30 rounded-xl py-2.5 pl-10 pr-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
+              className="bg-dracula-base border-dracula-gray/30 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-yellow w-full rounded-xl border py-2.5 pr-3 pl-10 text-base transition-all focus:outline-none"
             />
-            <p className="text-[10px] text-dracula-gray mt-1">
-              Fondo inicial que recibirás tú y cada nuevo participante al unirse al grupo.
+            <p className="text-dracula-gray mt-1 text-[10px]">
+              Fondo inicial que recibirás tú y cada nuevo participante al unirse
+              al grupo.
             </p>
           </div>
 
           {/* Toggle de Contraseña de Acceso */}
           <div className="pt-2">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
+            <label className="flex cursor-pointer items-center gap-2 select-none">
               <input
                 type="checkbox"
                 checked={hasPassword}
                 onChange={(e) => setHasPassword(e.target.checked)}
-                className="rounded border-dracula-gray/40 text-dracula-purple focus:ring-dracula-purple/30 bg-dracula-base w-4 h-4"
+                className="border-dracula-gray/40 text-dracula-purple focus:ring-dracula-purple/30 bg-dracula-base h-4 w-4 rounded"
               />
-              <span className="text-xs font-bold text-dracula-light flex items-center gap-1.5">
+              <span className="text-dracula-light flex items-center gap-1.5 text-xs font-bold">
                 <Lock size={14} className="text-dracula-yellow" />
                 Proteger con contraseña
               </span>
             </label>
 
             {hasPassword && (
-              <div className="mt-2.5 animate-fade-in">
+              <div className="animate-fade-in mt-2.5">
                 <input
                   id="create-group-password"
                   name="groupPassword"
@@ -288,10 +322,11 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Contraseña del grupo"
-                  className="w-full bg-dracula-base border border-dracula-yellow/50 rounded-xl py-2 px-3 text-base text-dracula-light placeholder-dracula-gray/50 focus:outline-none focus:border-dracula-yellow transition-all"
+                  className="bg-dracula-base border-dracula-yellow/50 text-dracula-light placeholder-dracula-gray/50 focus:border-dracula-yellow w-full rounded-xl border px-3 py-2 text-base transition-all focus:outline-none"
                 />
-                <p className="text-[10px] text-dracula-gray mt-1">
-                  Los participantes deberán introducir este código además del enlace de invitación.
+                <p className="text-dracula-gray mt-1 text-[10px]">
+                  Los participantes deberán introducir este código además del
+                  enlace de invitación.
                 </p>
               </div>
             )}
@@ -302,14 +337,14 @@ export default function CreateGroupModal({ isOpen, onClose }: CreateGroupModalPr
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-dracula-gray/30 text-dracula-gray font-bold text-sm hover:bg-dracula-base transition-colors btn-press"
+              className="border-dracula-gray/30 text-dracula-gray hover:bg-dracula-base btn-press flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-dracula-purple to-[#ff79c6] text-dracula-base font-black text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(189,147,249,0.3)] hover:opacity-95 transition-opacity disabled:opacity-50 btn-press"
+              className="from-dracula-purple text-dracula-base btn-press flex-1 rounded-xl bg-gradient-to-r to-[#ff79c6] px-4 py-2.5 text-sm font-black tracking-wider uppercase shadow-[0_0_15px_rgba(189,147,249,0.3)] transition-opacity hover:opacity-95 disabled:opacity-50"
             >
               {submitting ? 'Creando...' : 'Crear Grupo'}
             </button>

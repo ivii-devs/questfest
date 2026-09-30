@@ -5,11 +5,11 @@
  * PANEL DE CONTROL ADMINISTRATIVO ("MODO DIOS"): QuestFest PWA
  * ============================================================================
  * Centro de mando del Tribunal Arbitral de QuestFest.
- * 
+ *
  * Privilegios requeridos:
  * - Rol global de cuenta: 'admin', O
  * - Rol administrativo dentro del grupo activo: 'admin'
- * 
+ *
  * Módulos integrados:
  * 1. 'grupo': Ajustes de comunidad (avatar, nombre, descripción, códigos de invitación).
  * 2. 'sistema': Configuración clave-valor del boletín diario matutino (notificaciones/resumen).
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
 
   if (authLoading || groupLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-dracula-purple font-bold">
+      <div className="text-dracula-purple flex min-h-screen items-center justify-center bg-black font-bold">
         Verificando Credenciales de Administración...
       </div>
     );
@@ -96,18 +96,18 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="app-shell-page bg-black text-dracula-light select-none">
+    <div className="app-shell-page text-dracula-light bg-black select-none">
       {/* --- CABECERA MODO DIOS CON ÁREA SEGURA --- */}
-      <header className="flex-shrink-0 bg-dracula-base/95 backdrop-blur-md z-40 border-b-2 border-dracula-red pt-safe-top pb-0 px-4 select-none">
-        <div className="flex items-center justify-between mb-4">
+      <header className="bg-dracula-base/95 border-dracula-red pt-safe-top z-40 flex-shrink-0 border-b-2 px-4 pb-0 backdrop-blur-md select-none">
+        <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ShieldAlert size={28} className="text-dracula-red animate-pulse" />
             <div>
-              <h1 className="text-xl font-black text-dracula-red uppercase tracking-widest leading-tight">
+              <h1 className="text-dracula-red text-xl leading-tight font-black tracking-widest uppercase">
                 Panel Admin
               </h1>
               {activeGroup && (
-                <span className="text-xs font-bold text-dracula-purple flex items-center gap-1">
+                <span className="text-dracula-purple flex items-center gap-1 text-xs font-bold">
                   Comunidad: {activeGroup.nombre}
                 </span>
               )}
@@ -117,7 +117,7 @@ export default function AdminDashboard() {
             <GroupSwitcher />
             <Link
               href="/feed"
-              className="p-2 bg-dracula-card rounded-lg text-dracula-gray hover:text-dracula-light transition-colors btn-press"
+              className="bg-dracula-card text-dracula-gray hover:text-dracula-light btn-press rounded-lg p-2 transition-colors"
             >
               <ChevronLeft size={20} />
             </Link>
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Menú de Pestañas Deslizable */}
-        <div className="flex w-full mb-0 overflow-x-auto hide-scrollbar gap-2 pb-1">
+        <div className="hide-scrollbar mb-0 flex w-full gap-2 overflow-x-auto pb-1">
           {[
             {
               id: 'grupo',
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
                 key={tab.id}
                 id={`admin-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id as AdminTab)}
-                className={`flex items-center justify-center gap-1.5 flex-1 min-w-[100px] pb-3 text-sm font-bold transition-colors btn-press ${
+                className={`btn-press flex min-w-[100px] flex-1 items-center justify-center gap-1.5 pb-3 text-sm font-bold transition-colors ${
                   isActive ? `border-b-2 ${tab.color}` : 'text-dracula-gray'
                 }`}
               >

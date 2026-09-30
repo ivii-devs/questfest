@@ -1,29 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * ============================================================================
+ * MODAL DE NOTIFICACIÓN DE AJUSTE DE SALDO (BalanceNotificationModal)
+ * ============================================================================
+ * Informa al jugador de manera explícita si un administrador ha bonificado
+ * o penalizado su cuenta con QuestCoins.
+ * Consume dinámicamente el usuario autenticado para evitar fugas contables locales.
+ * ============================================================================
+ */
+
+import React, { useState, useEffect } from 'react';
 import { Check, Coins, TrendingDown, TrendingUp } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
+
+interface BalanceAlertData {
+  type: 'add' | 'subtract';
+  amount: number;
+  reason: string;
+}
 
 export default function BalanceNotificationModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [alertData, setAlertData] = useState<any | null>(null);
+  const [alertData, setAlertData] = useState<BalanceAlertData | null>(null);
+  const currentUsername = useAuthStore((state) => state.user?.username);
 
   useEffect(() => {
-    // Simulamos que el usuario que inicia la app es "Colega1" para poder verificar los testings visuales locales
-    const currentUser = 'Colega1';
-    const storageKey = `balance_alert_${currentUser}`;
+    if (!currentUsername) return;
+
+    const storageKey = `balance_alert_${currentUsername}`;
     const cachedAlert = localStorage.getItem(storageKey);
 
-    // Si el administrador guardó una alerta para este usuario, la cargamos
+    // Si el administrador guardó una alerta para este usuario específico, la cargamos
     if (cachedAlert) {
-      setAlertData(JSON.parse(cachedAlert));
-      setIsOpen(true);
+      try {
+        const parsed: BalanceAlertData = JSON.parse(cachedAlert);
+        setAlertData(parsed);
+        setIsOpen(true);
+      } catch {
+        localStorage.removeItem(storageKey);
+      }
     }
-  }, []);
+  }, [currentUsername]);
 
   const handleClose = () => {
-    // Eliminamos la alerta para que no se repita en el siguiente inicio
-    const currentUser = 'Colega1';
-    localStorage.removeItem(`balance_alert_${currentUser}`);
+    if (currentUsername) {
+      localStorage.removeItem(`balance_alert_${currentUsername}`);
+    }
     setIsOpen(false);
   };
 
@@ -32,36 +55,36 @@ export default function BalanceNotificationModal() {
   const isFine = alertData.type === 'subtract';
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div className="animate-fadeIn fixed inset-0 z-[110] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
       <div
-        className={`bg-dracula-base w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative border-2 ${
+        className={`bg-dracula-base relative flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border-2 shadow-2xl ${
           isFine ? 'border-dracula-red' : 'border-dracula-green'
         }`}
       >
         {/* Banner de Estado */}
         <div
-          className={`p-5 text-center text-dracula-base font-bold ${
+          className={`text-dracula-base p-5 text-center font-bold ${
             isFine ? 'bg-dracula-red' : 'bg-dracula-green'
           }`}
         >
-          <div className="mx-auto w-12 h-12 bg-dracula-base rounded-full flex items-center justify-center mb-2 shadow-md">
+          <div className="bg-dracula-base mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full shadow-md">
             {isFine ? (
               <TrendingDown size={24} className="text-dracula-red" />
             ) : (
               <TrendingUp size={24} className="text-dracula-green" />
             )}
           </div>
-          <h2 className="text-lg uppercase tracking-wider font-black">
+          <h2 className="text-lg font-black tracking-wider uppercase">
             {isFine ? '¡Has sido Penalizado!' : '¡Notificación de Saldo!'}
           </h2>
         </div>
 
         {/* Detalles del Ajuste */}
-        <div className="p-5 flex flex-col items-center gap-4 text-center">
-          <div className="flex items-center gap-2 bg-dracula-card px-4 py-2 rounded-xl border border-dracula-gray/20">
+        <div className="flex flex-col items-center gap-4 p-5 text-center">
+          <div className="bg-dracula-card border-dracula-gray/20 flex items-center gap-2 rounded-xl border px-4 py-2">
             <Coins size={20} className="text-dracula-yellow" />
             <span
-              className={`text-xl font-mono font-black ${
+              className={`font-mono text-xl font-black ${
                 isFine ? 'text-dracula-red' : 'text-dracula-green'
               }`}
             >
@@ -70,21 +93,21 @@ export default function BalanceNotificationModal() {
             </span>
           </div>
 
-          <div className="flex flex-col gap-1 w-full">
-            <span className="text-[10px] text-dracula-gray uppercase font-bold tracking-widest block mb-1">
+          <div className="flex w-full flex-col gap-1">
+            <span className="text-dracula-gray mb-1 block text-[10px] font-bold tracking-widest uppercase">
               Motivo del ajuste
             </span>
-            <p className="text-sm font-medium text-dracula-light bg-dracula-card p-3 rounded-xl border border-dracula-gray/10 italic leading-relaxed">
-              "{alertData.reason}"
+            <p className="text-dracula-light bg-dracula-card border-dracula-gray/10 rounded-xl border p-3 text-sm leading-relaxed font-medium italic">
+              &ldquo;{alertData.reason}&rdquo;
             </p>
           </div>
         </div>
 
         {/* Botón de Confirmación */}
-        <div className="p-4 border-t border-dracula-gray/20 bg-dracula-card/20">
+        <div className="border-dracula-gray/20 bg-dracula-card/20 border-t p-4">
           <button
             onClick={handleClose}
-            className={`w-full py-3 rounded-xl font-bold text-sm text-dracula-base flex items-center justify-center gap-2 uppercase tracking-wide hover:opacity-90 ${
+            className={`text-dracula-base flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold tracking-wide uppercase hover:opacity-90 ${
               isFine ? 'bg-dracula-red' : 'bg-dracula-green'
             }`}
           >

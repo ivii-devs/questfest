@@ -5,7 +5,7 @@
  * PÁGINA DEL MURO SOCIAL COMUNITARIO (Feed): QuestFest PWA
  * ============================================================================
  * Vista central de publicaciones e interacciones de la comunidad activa (/feed).
- * 
+ *
  * Componentes clave integrados:
  * 1. App Shell Inmersivo: Cabecera fija con selector rápido de grupo (`GroupSwitcher`),
  *    área central de desplazamiento independiente (`app-shell-scroll`) y barra inferior.
@@ -32,15 +32,31 @@ import GroupSwitcher from '@/components/groups/GroupSwitcher';
 import { useRouter } from 'next/navigation';
 
 // Carga perezosa (Dynamic Imports) para reducir el bundle inicial
-const BalanceNotificationModal = dynamic(() => import('@/components/BalanceNotificationModal'), { ssr: false });
-const RouletteModal = dynamic(() => import('@/components/RouletteModal'), { ssr: false });
+const BalanceNotificationModal = dynamic(
+  () => import('@/components/BalanceNotificationModal'),
+  { ssr: false }
+);
+const RouletteModal = dynamic(() => import('@/components/RouletteModal'), {
+  ssr: false,
+});
 
 export default function FeedPage() {
   const router = useRouter();
   const { user, loading: authLoading, refreshProfile } = useAuth();
   const { activeGroup, groups, loading: groupsLoading } = useGroup();
-  const { posts, hasMore, isLoadingMore, error, fetchInitialPosts, loadMorePosts } = useFeedStream(user, activeGroup?.id);
-  const { lastElementRef } = useInfiniteScroll(isLoadingMore, hasMore, loadMorePosts);
+  const {
+    posts,
+    hasMore,
+    isLoadingMore,
+    error,
+    fetchInitialPosts,
+    loadMorePosts,
+  } = useFeedStream(user, activeGroup?.id);
+  const { lastElementRef } = useInfiniteScroll(
+    isLoadingMore,
+    hasMore,
+    loadMorePosts
+  );
 
   // Redirigir al Hub si no hay grupo activo seleccionado o el usuario no pertenece a ningún grupo
   useEffect(() => {
@@ -67,9 +83,9 @@ export default function FeedPage() {
   // mostramos el marco de espera neutro del App Shell para prevenir cualquier parpadeo de contenido (FOUC).
   if (authLoading || groupsLoading || !activeGroup) {
     return (
-      <div className="fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-[var(--theme-app-bg)] text-dracula-light select-none">
-        <div className="w-10 h-10 border-3 border-dracula-purple/30 border-t-dracula-purple rounded-full animate-spin mb-4" />
-        <span className="text-xs font-bold tracking-widest text-dracula-gray uppercase animate-pulse">
+      <div className="text-dracula-light fixed inset-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-[var(--theme-app-bg)] select-none">
+        <div className="border-dracula-purple/30 border-t-dracula-purple mb-4 h-10 w-10 animate-spin rounded-full border-3" />
+        <span className="text-dracula-gray animate-pulse text-xs font-bold tracking-widest uppercase">
           Cargando QuestFest...
         </span>
       </div>
@@ -77,7 +93,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="app-shell-page bg-black text-dracula-light">
+    <div className="app-shell-page text-dracula-light bg-black">
       {/* Modales cargados dinámicamente bajo demanda */}
       <BalanceNotificationModal />
 
@@ -86,12 +102,12 @@ export default function FeedPage() {
       )}
 
       {/* Cabecera Principal del Feed (App Shell - Capa Superior Fija) */}
-      <header className="flex-shrink-0 bg-dracula-base/95 backdrop-blur-md z-40 app-shell-header border-b border-dracula-gray/20 pt-safe-top pb-3 px-4 flex items-center justify-between select-none">
+      <header className="bg-dracula-base/95 app-shell-header border-dracula-gray/20 pt-safe-top z-40 flex flex-shrink-0 items-center justify-between border-b px-4 pb-3 backdrop-blur-md select-none">
         <div>
-          <h1 className="text-lg font-black text-dracula-light uppercase tracking-wide">
+          <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
             Feed
           </h1>
-          <span className="text-[10px] text-dracula-gray font-bold block">
+          <span className="text-dracula-gray block text-[10px] font-bold">
             Comunidad: {activeGroup.nombre}
           </span>
         </div>
@@ -99,86 +115,98 @@ export default function FeedPage() {
       </header>
 
       {/* Contenido desplazable interno aislado con soporte de Pull to Refresh */}
-      <PullToRefresh onRefresh={async () => { await Promise.all([fetchInitialPosts(), refreshProfile()]); }}>
+      <PullToRefresh
+        onRefresh={async () => {
+          await Promise.all([fetchInitialPosts(), refreshProfile()]);
+        }}
+      >
         <main className="app-shell-scroll pb-28">
-
-        {/* Banner de la Ruleta Diaria */}
-        <section className="mx-4 mt-4 pt-4">
-          <button
-            onClick={() => setIsRouletteModalOpen(true)}
-            aria-label="Abrir la ruleta diaria de misiones"
-            className={`w-full text-left p-0.5 rounded-xl shadow-lg transform hover:scale-[1.01] transition-all border ${
-              hasSpunToday
-                ? 'bg-dracula-card border-dracula-gray/20 opacity-70'
-                : 'bg-gradient-to-r from-[#ffb86c] to-[#ff79c6] animate-pulse'
-            }`}
-          >
-            <div className="bg-dracula-base rounded-[10px] p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-full ${
-                    hasSpunToday
-                      ? 'bg-dracula-gray/10 text-dracula-gray'
-                      : 'bg-[#ffb86c]/20 text-[#ffb86c]'
-                  }`}
-                >
-                  <Dna size={20} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-black text-dracula-light uppercase tracking-wide">
-                    {hasSpunToday
-                      ? 'Ruleta Diaria Consultada'
-                      : 'Misión Especial Disponible'}
-                  </span>
-                  <span className="text-[10px] text-dracula-gray font-semibold">
-                    {hasSpunToday
-                      ? 'Ya has reclamado tu reto de hoy. Vuelve mañana.'
-                      : 'Toca aquí para girar el bombo de retos exclusivos.'}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight
-                className={hasSpunToday ? 'text-dracula-gray' : 'text-[#ffb86c]'}
-                size={20}
-              />
-            </div>
-          </button>
-        </section>
-
-        {/* Formulario para publicar nuevo reto/mensaje */}
-        <section className="mx-4 mt-4">
-          <CreatePostForm user={user} onPostCreated={fetchInitialPosts} groupId={activeGroup.id} />
-        </section>
-
-        {/* Mensaje de error de API si falla la conexión */}
-        {error && (
-          <div className="mx-4 mt-4 p-3 rounded-lg bg-dracula-red/10 border border-dracula-red/30 text-dracula-red text-xs flex justify-between items-center">
-            <span>{error}</span>
+          {/* Banner de la Ruleta Diaria */}
+          <section className="mx-4 mt-4 pt-4">
             <button
-              onClick={fetchInitialPosts}
-              className="bg-dracula-red text-white text-[10px] font-bold px-2 py-1 rounded hover:opacity-90"
+              onClick={() => setIsRouletteModalOpen(true)}
+              aria-label="Abrir la ruleta diaria de misiones"
+              className={`w-full transform rounded-xl border p-0.5 text-left shadow-lg transition-all hover:scale-[1.01] ${
+                hasSpunToday
+                  ? 'bg-dracula-card border-dracula-gray/20 opacity-70'
+                  : 'animate-pulse bg-gradient-to-r from-[#ffb86c] to-[#ff79c6]'
+              }`}
             >
-              Reintentar
+              <div className="bg-dracula-base flex items-center justify-between rounded-[10px] p-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`rounded-full p-2 ${
+                      hasSpunToday
+                        ? 'bg-dracula-gray/10 text-dracula-gray'
+                        : 'bg-[#ffb86c]/20 text-[#ffb86c]'
+                    }`}
+                  >
+                    <Dna size={20} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-dracula-light text-sm font-black tracking-wide uppercase">
+                      {hasSpunToday
+                        ? 'Ruleta Diaria Consultada'
+                        : 'Misión Especial Disponible'}
+                    </span>
+                    <span className="text-dracula-gray text-[10px] font-semibold">
+                      {hasSpunToday
+                        ? 'Ya has reclamado tu reto de hoy. Vuelve mañana.'
+                        : 'Toca aquí para girar el bombo de retos exclusivos.'}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight
+                  className={
+                    hasSpunToday ? 'text-dracula-gray' : 'text-[#ffb86c]'
+                  }
+                  size={20}
+                />
+              </div>
             </button>
-          </div>
-        )}
+          </section>
 
-        {/* Lista de Publicaciones en el Feed */}
-        <section className="p-4 flex flex-col gap-4">
-          {posts.map((post, index) => (
-            <div key={post.id} ref={index === posts.length - 1 ? lastElementRef : null}>
-              <FeedCard post={post} onRefresh={fetchInitialPosts} />
-            </div>
-          ))}
+          {/* Formulario para publicar nuevo reto/mensaje */}
+          <section className="mx-4 mt-4">
+            <CreatePostForm
+              user={user}
+              onPostCreated={fetchInitialPosts}
+              groupId={activeGroup.id}
+            />
+          </section>
 
-          {isLoadingMore && (
-            <div className="text-center py-4 text-xs font-bold text-dracula-purple animate-pulse">
-              Cargando más retos y misiones...
+          {/* Mensaje de error de API si falla la conexión */}
+          {error && (
+            <div className="bg-dracula-red/10 border-dracula-red/30 text-dracula-red mx-4 mt-4 flex items-center justify-between rounded-lg border p-3 text-xs">
+              <span>{error}</span>
+              <button
+                onClick={fetchInitialPosts}
+                className="bg-dracula-red rounded px-2 py-1 text-[10px] font-bold text-white hover:opacity-90"
+              >
+                Reintentar
+              </button>
             </div>
           )}
-        </section>
-      </main>
-    </PullToRefresh>
-  </div>
+
+          {/* Lista de Publicaciones en el Feed */}
+          <section className="flex flex-col gap-4 p-4">
+            {posts.map((post, index) => (
+              <div
+                key={post.id}
+                ref={index === posts.length - 1 ? lastElementRef : null}
+              >
+                <FeedCard post={post} onRefresh={fetchInitialPosts} />
+              </div>
+            ))}
+
+            {isLoadingMore && (
+              <div className="text-dracula-purple animate-pulse py-4 text-center text-xs font-bold">
+                Cargando más retos y misiones...
+              </div>
+            )}
+          </section>
+        </main>
+      </PullToRefresh>
+    </div>
   );
 }

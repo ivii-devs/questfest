@@ -6,7 +6,7 @@
  * ============================================================================
  * Gestiona la pertenencia a comunidades, el grupo activo actual del jugador
  * y su saldo local de QuestCoins persistido.
- * 
+ *
  * Dinámica:
  * - Recupera los grupos vía `/api/groups/my-groups`.
  * - Recuerda el último grupo activo seleccionado en `localStorage('active_group_id')`.
@@ -14,7 +14,14 @@
  * ============================================================================
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
 import api from '@/lib/axios';
 import { useAuth } from './AuthContext';
 
@@ -60,55 +67,68 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
   /**
    * Carga la lista de grupos a los que pertenece el usuario autenticado
    * y restablece el grupo activo guardado en localStorage o selecciona el primero por defecto.
-   * 
+   *
    * Sincronización con AuthContext:
    * Si la sesión aún se está verificando ('authLoading' es true), mantenemos 'loading'
    * en true para prevenir condiciones de carrera y redirecciones prematuras a /groups.
-   * 
+   *
    * Prioridad de Selección:
    * Si se provee 'targetActiveGroupId' (ej. creación o unión inmediata a un grupo),
    * tiene prioridad absoluta sobre la clave persistida en localStorage.
    */
-  const refreshGroups = useCallback(async (targetActiveGroupId?: number) => {
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
-
-    if (!user) {
-      setGroups([]);
-      setActiveGroup(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const res = await api.get('/api/groups/my-groups');
-      const fetchedGroups: GroupMembership[] = res.data;
-      setGroups(fetchedGroups);
-
-      // Determinamos cuál debe ser el grupo activo
-      if (fetchedGroups.length > 0) {
-        const storedGroupIdStr = localStorage.getItem('active_group_id');
-        const fallbackId = storedGroupIdStr ? parseInt(storedGroupIdStr, 10) : null;
-        const preferredId = targetActiveGroupId !== undefined ? targetActiveGroupId : fallbackId;
-        
-        const matched = preferredId ? fetchedGroups.find(g => g.id === preferredId) : null;
-        const currentToSet = matched || fetchedGroups[0];
-        
-        setActiveGroup(currentToSet);
-        localStorage.setItem('active_group_id', currentToSet.id.toString());
-      } else {
-        setActiveGroup(null);
-        localStorage.removeItem('active_group_id');
+  const refreshGroups = useCallback(
+    async (targetActiveGroupId?: number) => {
+      if (authLoading) {
+        setLoading(true);
+        return;
       }
-    } catch (error) {
-      console.error('[GroupContext] Error al cargar los grupos del usuario:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, authLoading]);
+
+      if (!user) {
+        setGroups([]);
+        setActiveGroup(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const res = await api.get('/api/groups/my-groups');
+        const fetchedGroups: GroupMembership[] = res.data;
+        setGroups(fetchedGroups);
+
+        // Determinamos cuál debe ser el grupo activo
+        if (fetchedGroups.length > 0) {
+          const storedGroupIdStr = localStorage.getItem('active_group_id');
+          const fallbackId = storedGroupIdStr
+            ? parseInt(storedGroupIdStr, 10)
+            : null;
+          const preferredId =
+            targetActiveGroupId !== undefined
+              ? targetActiveGroupId
+              : fallbackId;
+
+          const matched = preferredId
+            ? fetchedGroups.find((g) => g.id === preferredId)
+            : null;
+          const currentToSet = matched || fetchedGroups[0];
+
+          setActiveGroup(currentToSet);
+          localStorage.setItem('active_group_id', currentToSet.id.toString());
+        } else {
+          setActiveGroup(null);
+          localStorage.removeItem('active_group_id');
+        }
+      } catch (error) {
+        console.error(
+          '[GroupContext] Error al cargar los grupos del usuario:',
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, authLoading]
+  );
 
   /**
    * Permite al usuario cambiar de grupo activo de forma instantánea.
@@ -117,8 +137,8 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
    */
   const setActiveGroupById = (id: number) => {
     localStorage.setItem('active_group_id', id.toString());
-    setGroups(prevGroups => {
-      const target = prevGroups.find(g => g.id === id);
+    setGroups((prevGroups) => {
+      const target = prevGroups.find((g) => g.id === id);
       if (target) {
         setActiveGroup(target);
       }
@@ -163,14 +183,14 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
    * ante apuestas o recompensas completadas en tiempo real.
    */
   const updateActiveGroupBalance = (delta: number) => {
-    setActiveGroup(prev => {
+    setActiveGroup((prev) => {
       if (!prev) return null;
       const updatedBalance = Math.max(0, prev.saldo_grupo + delta);
       return { ...prev, saldo_grupo: updatedBalance };
     });
 
-    setGroups(prevGroups => 
-      prevGroups.map(g => {
+    setGroups((prevGroups) =>
+      prevGroups.map((g) => {
         if (activeGroup && g.id === activeGroup.id) {
           return { ...g, saldo_grupo: Math.max(0, g.saldo_grupo + delta) };
         }

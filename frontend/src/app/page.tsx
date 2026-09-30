@@ -5,7 +5,7 @@
  * ENRUTADOR RAÍZ DE ENTRADA (Root Gateway): QuestFest PWA
  * ============================================================================
  * Punto de entrada base de la aplicación (URL '/').
- * 
+ *
  * Responsabilidad única:
  * Dirigir de forma inmediata y sin parpadeos al usuario según su estado de sesión:
  * 1. Si no dispone de sesión autenticada: Redirige a '/login'.
@@ -34,9 +34,9 @@ export default function RootPage() {
 
   // Pantalla de espera neutra con tokens visuales del App Shell para prevenir FOUC
   return (
-    <div className="fixed inset-0 w-full h-[100dvh] flex flex-col items-center justify-center bg-[var(--theme-app-bg)] text-dracula-light select-none">
-      <div className="w-10 h-10 border-3 border-dracula-purple/30 border-t-dracula-purple rounded-full animate-spin mb-4" />
-      <span className="text-xs font-bold tracking-widest text-dracula-gray uppercase animate-pulse">
+    <div className="text-dracula-light fixed inset-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-[var(--theme-app-bg)] select-none">
+      <div className="border-dracula-purple/30 border-t-dracula-purple mb-4 h-10 w-10 animate-spin rounded-full border-3" />
+      <span className="text-dracula-gray animate-pulse text-xs font-bold tracking-widest uppercase">
         Cargando QuestFest...
       </span>
     </div>
