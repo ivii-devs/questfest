@@ -56,6 +56,10 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
     - Cero fugas contables: verificar que todo movimiento de QuestCoins esté respaldado atómicamente en `LedgerTransaccion`.
     - Soberanía absoluta del backend en azar y recompensas.
   - **Artefacto Verificable y Reproducible**: Al finalizar las pruebas, genera y documenta el reporte formal con trazas, estado de Ledger verificado y comando determinista de reproducción.
+  - **Higiene de Puertos y Ciclo de Vida de Procesos**:
+    - Previo a lanzar suites o servidores auxiliares, verificar puertos libres (3000, 8000) o ejecutar limpieza preventiva (ej. `node scripts/clean-ports.js`).
+    - Configurar procesos demonio (`uvicorn`, `npm run dev`) con `IsDaemon: true` y validar operatividad inmediatamente mediante inspección de logs, sin esperar el cierre del proceso.
+    - Ejecutar un teardown estricto matando activamente (`manage_task` con `Action: 'kill'`) cualquier servidor o demonio auxiliar tan pronto finalicen las pruebas, erradicando procesos zombi ([tools/permissions.md](../tools/permissions.md)).
   - **Criterio de Aprobación**: Si algún test falla o se detecta una vulnerabilidad, se corrigen los defectos en Fase 2 antes de avanzar.
 
 - [ ] **Fase 4: Sincronización con el Vault de Obsidian**
