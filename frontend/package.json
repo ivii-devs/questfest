@@ -41,5 +41,9 @@
   "optionalDependencies": {
     "@emnapi/core": "*",
     "@emnapi/runtime": "*"
+  },
+  "allowScripts": {
+    "sharp": true,
+    "unrs-resolver": true
   }
 }

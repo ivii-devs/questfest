@@ -129,3 +129,15 @@ desktop.ini
 # 6. Obsidian Vault (Estado de sesión local del usuario)
 # ------------------------------------------------------------------------------
 obsidian_vault/.obsidian/workspace.json
+
+# ------------------------------------------------------------------------------
+# 7. Plataformas de Despliegue y Herramientas de Empaquetado
+# ------------------------------------------------------------------------------
+# Vercel CLI (metadatos locales de proyecto y builds)
+.vercel/
+**/.vercel/
+
+# UV (Caché del gestor de paquetes de Python)
+.uv/
+**/.uv/
+
