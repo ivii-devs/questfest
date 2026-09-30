@@ -32,6 +32,15 @@ dependencies = [
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+# Declaramos a UV que QuestFest es una aplicación ejecutable y no una librería para empaquetar
+[tool.uv]
+package = false
+
+# Delimitamos el autodescubrimiento de setuptools exclusivamente a la carpeta 'app'
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "tests*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
