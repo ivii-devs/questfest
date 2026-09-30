@@ -1,28 +1,36 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException
-from typing import Optional
+"""
+================================================================================
+OPERACIONES CRUD PARA MERCADOS DE APUESTAS Y PREDICCIONES: QuestFest
+================================================================================
+Gestiona el ciclo de vida de persistencia de las apuestas comunitarias:
+1. Sugerencia comunitaria de propuestas con identificadores UUID de opciones.
+2. Registro atómico de tickets de apuesta con deducción pesimista en el Ledger.
+3. Desacoplado del protocolo HTTP mediante excepciones limpias del dominio.
+================================================================================
+"""
+
 import uuid
 
-from app.models.juegos import Apuesta, TicketApuesta
-from app.models.grupo import MiembroGrupo
-from app.schemas.apuestas_schemas import SuggestBetRequest
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import (
+    ConflictError,
+    DomainException,
+    EntityNotFoundError,
+    InvalidStateTransitionError,
+)
 from app.crud.ledger_crud import move_tokens
+from app.models.grupo import MiembroGrupo
+from app.models.juegos import Apuesta, TicketApuesta
+from app.schemas.apuestas_schemas import SuggestBetRequest
 
-# ==============================================================================
-# Operaciones CRUD para Mercados de Apuestas y Predicciones (QuestFest)
-# ==============================================================================
-# Este módulo gestiona el ciclo de vida completo de las apuestas:
-# 1. Sugerencia comunitaria de propuestas con identificadores UUID de opciones.
-# 2. Consulta y filtrado de apuestas activas por comunidad (Multi-Tenancy).
-# 3. Registro atómico de cupones/tickets de apuesta con deducción de fondos en el Ledger.
-# ==============================================================================
 
-async def create_apuesta(db: AsyncSession, user_id: int, bet_data: SuggestBetRequest):
+async def create_apuesta(db: AsyncSession, user_id: int, bet_data: SuggestBetRequest) -> Apuesta:
     """
     Crea una nueva propuesta de apuesta sugerida por un jugador para su grupo activo.
-    
+
     Generación de Opciones (JSONB):
     Cada opción introducida por el usuario recibe un identificador alfanumérico corto (8 caracteres UUID)
     para referenciarla inequívocamente al votar o apostar (ej. 'a3f89b12': {'text': 'Gana Juan', 'multiplier': 2.5}).
@@ -34,12 +42,14 @@ async def create_apuesta(db: AsyncSession, user_id: int, bet_data: SuggestBetReq
         opciones_dict[opt_id] = {
             "id": opt_id,
             "text": opt.text,
-            "multiplier": opt.multiplier
+            "multiplier": opt.multiplier,
         }
-        
+
     grupo_id = bet_data.group_id
     if grupo_id is None:
-        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        member_stmt = (
+            select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        )
         res = await db.execute(member_stmt)
         grupo_id = res.scalar()
 
@@ -49,27 +59,20 @@ async def create_apuesta(db: AsyncSession, user_id: int, bet_data: SuggestBetReq
         opciones=opciones_dict,
         fase="global",
         estado="propuesta",
-        grupo_id=grupo_id
+        grupo_id=grupo_id,
     )
     db.add(db_apuesta)
     await db.commit()
     await db.refresh(db_apuesta)
     return db_apuesta
 
-async def get_active_bets(db: AsyncSession, group_id: Optional[int] = None):
-    """
-    Recupera el listado de apuestas, aplicando filtrado estricto por comunidad si se especifica 'group_id'.
-    """
-    stmt = select(Apuesta)
-    if group_id is not None:
-        stmt = stmt.filter(Apuesta.grupo_id == group_id)
-    result = await db.execute(stmt)
-    return result.scalars().all()
 
-async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: str, amount: int):
+async def place_bet(
+    db: AsyncSession, apuesta_id: int, user_id: int, option_id: str, amount: int
+) -> TicketApuesta:
     """
     Registra la participación de un usuario en un mercado mediante una transacción ACID atómica.
-    
+
     ¿Por qué una transacción única con 'auto_commit=False'?
     Anteriormente, el sistema debitaba tokens con commit inmediato y luego, si la inserción
     del ticket fallaba por duplicidad, realizaba una transacción inversa de reembolso.
@@ -79,25 +82,29 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
     sin necesidad de generar asientos contables de contingencia en el Ledger.
     """
     if amount <= 0:
-        raise HTTPException(status_code=400, detail="El importe a apostar debe ser mayor que cero")
+        raise InvalidStateTransitionError("El importe a apostar debe ser mayor que cero")
 
     # 1. Recuperar la apuesta y validar su existencia y apertura
     result = await db.execute(select(Apuesta).filter(Apuesta.id == apuesta_id))
     apuesta = result.scalars().first()
-    
+
     if not apuesta:
-        raise HTTPException(status_code=404, detail="Apuesta no encontrada")
+        raise EntityNotFoundError("Apuesta no encontrada")
     if apuesta.estado != "abierta":
-        raise HTTPException(status_code=400, detail="El mercado para esta apuesta no está abierto para recibir predicciones")
-        
+        raise InvalidStateTransitionError(
+            "El mercado para esta apuesta no está abierto para recibir predicciones"
+        )
+
     # 2. Validar que la opción elegida exista en el catálogo JSONB de la apuesta
     if option_id not in apuesta.opciones:
-        raise HTTPException(status_code=400, detail="La opción seleccionada no existe en esta apuesta")
-        
+        raise InvalidStateTransitionError("La opción seleccionada no existe en esta apuesta")
+
     # Resolver grupo_id para confinamiento estricto a MiembroGrupo
     target_group_id = apuesta.grupo_id
     if target_group_id is None:
-        member_stmt = select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        member_stmt = (
+            select(MiembroGrupo.grupo_id).where(MiembroGrupo.usuario_id == user_id).limit(1)
+        )
         res = await db.execute(member_stmt)
         target_group_id = res.scalar()
 
@@ -105,24 +112,24 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
     try:
         # Inmovilización de tokens en el saldo del grupo correspondiente
         await move_tokens(
-            db=db, 
-            user_id=user_id, 
-            amount=-amount, 
+            db=db,
+            user_id=user_id,
+            amount=-amount,
             concept=f"Apuesta colocada en: {apuesta.titulo}",
             auto_commit=False,
-            group_id=target_group_id
+            group_id=target_group_id,
         )
-        
+
         # Creación del cupón individual
         ticket = TicketApuesta(
             usuario_id=user_id,
             apuesta_id=apuesta_id,
             opcion_id=option_id,
             cantidad=amount,
-            grupo_id=target_group_id
+            grupo_id=target_group_id,
         )
         db.add(ticket)
-        
+
         # Confirmamos ambas mutaciones en un único COMMIT
         await db.commit()
         await db.refresh(ticket)
@@ -131,13 +138,12 @@ async def place_bet(db: AsyncSession, apuesta_id: int, user_id: int, option_id: 
     except IntegrityError:
         # Si salta violación de unicidad ('uq_usuario_apuesta') o saldo negativo, revertimos todo
         await db.rollback()
-        raise HTTPException(
-            status_code=400, 
-            detail="Operación cancelada. Ya has participado en esta apuesta o tu saldo de tokens es insuficiente."
+        raise ConflictError(
+            "Operación cancelada. Ya has participado en esta apuesta o tu saldo de tokens es insuficiente."
         )
-    except HTTPException:
+    except DomainException:
         await db.rollback()
         raise
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al registrar la apuesta: {str(e)}")
+        raise DomainException(f"Error al registrar la apuesta: {str(e)}")

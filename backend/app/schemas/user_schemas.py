@@ -1,9 +1,12 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
+
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     bio: Optional[str] = None
+
 
 class UserStatsResponse(BaseModel):
     missionsCompleted: int
@@ -17,8 +20,10 @@ class UserStatsResponse(BaseModel):
     duelsLost: int
     duelsActive: int
 
+
 class RankingResponse(BaseModel):
     rankingPosition: int
+
 
 class TransactionResponse(BaseModel):
     id: int
@@ -28,13 +33,15 @@ class TransactionResponse(BaseModel):
     date: str
     balance: int
 
+
 class StatDetailItem(BaseModel):
-    id: str        # Ej: "tx_12", "bet_5", "duel_2"
-    title: str     # Ej: "Duelo vs @usuario", o el concepto de la transacción
-    amount: int    # Tokens en positivo absoluto
-    date: str      # Fecha en formato .isoformat()
-    type: str      # 'transaction', 'bet', 'duel'
-    status: str    # 'won', 'lost', 'pending', 'income', 'expense'
+    id: str  # Ej: "tx_12", "bet_5", "duel_2"
+    title: str  # Ej: "Duelo vs @usuario", o el concepto de la transacción
+    amount: int  # Tokens en positivo absoluto
+    date: str  # Fecha en formato .isoformat()
+    type: str  # 'transaction', 'bet', 'duel'
+    status: str  # 'won', 'lost', 'pending', 'income', 'expense'
+
 
 class PublicProfileResponse(BaseModel):
     username: str
@@ -45,18 +52,21 @@ class PublicProfileResponse(BaseModel):
     misiones_completadas: int
     duelos_ganados: int
 
+
 class PublicApuestaResponse(BaseModel):
     id: int
     titulo: str
     cantidad: int
-    resultado: str # "Ganada" | "Perdida"
+    resultado: str  # "Ganada" | "Perdida"
     fecha: str
+
 
 class PublicMisionResponse(BaseModel):
     id: int
     titulo: str
     recompensa: int
     fecha_completada: str
+
 
 class PublicDueloResponse(BaseModel):
     id: int

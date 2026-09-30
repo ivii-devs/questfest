@@ -15,23 +15,26 @@ para el boletín informativo matutino.
 ================================================================================
 """
 
-from typing import Optional
 from datetime import datetime, timedelta, timezone
+from typing import Optional
+
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
 
-from app.models.usuario import Usuario, LedgerTransaccion
 from app.models.grupo import MiembroGrupo
+from app.models.juegos import Apuesta, Duelo, TicketApuesta
 from app.models.misiones import Mision, PruebaMision
-from app.models.juegos import Apuesta, TicketApuesta, Duelo
-from app.schemas.admin_schemas import DailySummaryStatsResponse, StatUser, DuelStat
+from app.models.usuario import LedgerTransaccion, Usuario
+from app.schemas.admin_schemas import DailySummaryStatsResponse, DuelStat, StatUser
 
 
-async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = None) -> DailySummaryStatsResponse:
+async def calculate_summary_stats(
+    db: AsyncSession, group_id: Optional[int] = None
+) -> DailySummaryStatsResponse:
     """
     Calcula las estadísticas para el boletín informativo diario matutino.
-    
+
     ¿Por qué soportamos 'group_id' opcional?
     En la arquitectura multi-tenancy de QuestFest, cada comunidad posee su propio balance contable,
     sus retos específicos y sus propios mercados de apuestas. Cuando se proporciona 'group_id',
@@ -75,9 +78,9 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
 
         # 3. Usuario con más misiones aprobadas en este grupo
         stmt_miss = (
-            select(PruebaMision.usuario_id, func.count(PruebaMision.id).label('c'))
+            select(PruebaMision.usuario_id, func.count(PruebaMision.id).label("c"))
             .join(Mision, Mision.id == PruebaMision.mision_id)
-            .where(and_(Mision.grupo_id == group_id, PruebaMision.estado == 'approved'))
+            .where(and_(Mision.grupo_id == group_id, PruebaMision.estado == "approved"))
             .group_by(PruebaMision.usuario_id)
             .order_by(func.count(PruebaMision.id).desc())
             .limit(1)
@@ -91,13 +94,13 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
 
         # 4. Usuario con más apuestas acertadas en este grupo
         stmt_bets = (
-            select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label('c'))
+            select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label("c"))
             .join(Apuesta, Apuesta.id == TicketApuesta.apuesta_id)
             .where(
                 and_(
                     Apuesta.grupo_id == group_id,
-                    Apuesta.estado == 'cerrada',
-                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id
+                    Apuesta.estado == "cerrada",
+                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id,
                 )
             )
             .group_by(TicketApuesta.usuario_id)
@@ -114,7 +117,7 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
         # 5. Duelo más importante resuelto en el grupo
         duel = await db.scalar(
             select(Duelo)
-            .where(and_(Duelo.grupo_id == group_id, Duelo.estado == 'completed'))
+            .where(and_(Duelo.grupo_id == group_id, Duelo.estado == "completed"))
             .order_by(Duelo.tokens_en_juego.desc())
             .limit(1)
         )
@@ -136,12 +139,12 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
         # 6. Mayores variaciones económicas en las últimas 24 horas en el grupo (Ledger)
         ayer = datetime.now(timezone.utc) - timedelta(hours=24)
         stmt_win = (
-            select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s'))
+            select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label("s"))
             .where(
                 and_(
                     LedgerTransaccion.grupo_id == group_id,
                     LedgerTransaccion.cantidad > 0,
-                    LedgerTransaccion.fecha_creacion >= ayer
+                    LedgerTransaccion.fecha_creacion >= ayer,
                 )
             )
             .group_by(LedgerTransaccion.usuario_id)
@@ -156,12 +159,12 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
                 biggest_winner = StatUser(name=u.username, amount=f"+{res_win[1]}")
 
         stmt_lose = (
-            select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s'))
+            select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label("s"))
             .where(
                 and_(
                     LedgerTransaccion.grupo_id == group_id,
                     LedgerTransaccion.cantidad < 0,
-                    LedgerTransaccion.fecha_creacion >= ayer
+                    LedgerTransaccion.fecha_creacion >= ayer,
                 )
             )
             .group_by(LedgerTransaccion.usuario_id)
@@ -183,16 +186,27 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
             mostMissions=most_miss,
             duelWinner=duel_winner,
             biggestWinner=biggest_winner,
-            biggestLoser=biggest_loser
+            biggestLoser=biggest_loser,
         )
 
     # Fallback global de plataforma cuando no se especifica group_id
     top1 = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.desc()).limit(1))
-    last = await db.scalar(select(Usuario).where(Usuario.saldo_actual > 0).order_by(Usuario.saldo_actual.asc()).limit(1))
+    last = await db.scalar(
+        select(Usuario)
+        .where(Usuario.saldo_actual > 0)
+        .order_by(Usuario.saldo_actual.asc())
+        .limit(1)
+    )
     if not last:
         last = await db.scalar(select(Usuario).order_by(Usuario.saldo_actual.asc()).limit(1))
 
-    stmt_miss = select(PruebaMision.usuario_id, func.count(PruebaMision.id).label('c')).where(PruebaMision.estado == 'approved').group_by(PruebaMision.usuario_id).order_by(func.count(PruebaMision.id).desc()).limit(1)
+    stmt_miss = (
+        select(PruebaMision.usuario_id, func.count(PruebaMision.id).label("c"))
+        .where(PruebaMision.estado == "approved")
+        .group_by(PruebaMision.usuario_id)
+        .order_by(func.count(PruebaMision.id).desc())
+        .limit(1)
+    )
     res_miss = (await db.execute(stmt_miss)).first()
     most_miss = None
     if res_miss:
@@ -201,13 +215,10 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
             most_miss = StatUser(name=u.username, count=res_miss[1])
 
     stmt_bets = (
-        select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label('c'))
+        select(TicketApuesta.usuario_id, func.count(TicketApuesta.id).label("c"))
         .join(Apuesta, Apuesta.id == TicketApuesta.apuesta_id)
         .where(
-            and_(
-                Apuesta.estado == 'cerrada',
-                TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id
-            )
+            and_(Apuesta.estado == "cerrada", TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id)
         )
         .group_by(TicketApuesta.usuario_id)
         .order_by(func.count(TicketApuesta.id).desc())
@@ -220,10 +231,19 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
         if u:
             most_bets = StatUser(name=u.username, count=res_bets[1])
 
-    duel = await db.scalar(select(Duelo).where(Duelo.estado == 'completed').order_by(Duelo.tokens_en_juego.desc()).limit(1))
+    duel = await db.scalar(
+        select(Duelo)
+        .where(Duelo.estado == "completed")
+        .order_by(Duelo.tokens_en_juego.desc())
+        .limit(1)
+    )
     duel_winner = None
     if duel:
-        d_full = await db.scalar(select(Duelo).options(selectinload(Duelo.retador), selectinload(Duelo.retado)).where(Duelo.id == duel.id))
+        d_full = await db.scalar(
+            select(Duelo)
+            .options(selectinload(Duelo.retador), selectinload(Duelo.retado))
+            .where(Duelo.id == duel.id)
+        )
         if d_full and d_full.retador and d_full.retado:
             winner_name = d_full.retador.username
             opponent_name = d_full.retado.username
@@ -233,7 +253,13 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
             duel_winner = DuelStat(name=winner_name, opponent=opponent_name)
 
     ayer = datetime.now(timezone.utc) - timedelta(hours=24)
-    stmt_win = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad > 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).desc()).limit(1)
+    stmt_win = (
+        select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label("s"))
+        .where(LedgerTransaccion.cantidad > 0, LedgerTransaccion.fecha_creacion >= ayer)
+        .group_by(LedgerTransaccion.usuario_id)
+        .order_by(func.sum(LedgerTransaccion.cantidad).desc())
+        .limit(1)
+    )
     res_win = (await db.execute(stmt_win)).first()
     biggest_winner = None
     if res_win:
@@ -241,7 +267,13 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
         if u:
             biggest_winner = StatUser(name=u.username, amount=f"+{res_win[1]}")
 
-    stmt_lose = select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label('s')).where(LedgerTransaccion.cantidad < 0, LedgerTransaccion.fecha_creacion >= ayer).group_by(LedgerTransaccion.usuario_id).order_by(func.sum(LedgerTransaccion.cantidad).asc()).limit(1)
+    stmt_lose = (
+        select(LedgerTransaccion.usuario_id, func.sum(LedgerTransaccion.cantidad).label("s"))
+        .where(LedgerTransaccion.cantidad < 0, LedgerTransaccion.fecha_creacion >= ayer)
+        .group_by(LedgerTransaccion.usuario_id)
+        .order_by(func.sum(LedgerTransaccion.cantidad).asc())
+        .limit(1)
+    )
     res_lose = (await db.execute(stmt_lose)).first()
     biggest_loser = None
     if res_lose:
@@ -257,5 +289,5 @@ async def calculate_summary_stats(db: AsyncSession, group_id: Optional[int] = No
         mostMissions=most_miss,
         duelWinner=duel_winner,
         biggestWinner=biggest_winner,
-        biggestLoser=biggest_loser
+        biggestLoser=biggest_loser,
     )

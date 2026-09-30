@@ -1,29 +1,38 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update
-from sqlalchemy.exc import IntegrityError
-from fastapi import HTTPException, status
+"""
+================================================================================
+MOTOR TRANSACCIONAL Y LEDGER INMUTABLE: QuestFest
+================================================================================
+Este módulo es el núcleo financiero de la aplicación.
+Cada operación que involucra QuestCoins (abono de premios, cobro de apuestas,
+retención de duelos, recompensas de misiones o multas arbitrales) DEBE canalizarse
+a través de 'move_tokens'.
+
+Principios ACID Garantizados:
+1. Atomicidad: El balance del usuario (o del miembro del grupo) se actualiza y el asiento
+   contable en 'ledger_transacciones' se registra dentro de la misma transacción de BD.
+2. Consistencia: La base de datos (PostgreSQL) valida las restricciones 'saldo_actual >= 0'
+   y 'saldo_grupo >= 0'. Si un usuario no tiene fondos suficientes, el motor de la BD
+   aborta la operación con un IntegrityError traducido a InsufficientBalanceError.
+3. Aislamiento: El uso de 'UPDATE ... RETURNING' previene lecturas sucias (dirty reads)
+   y condiciones de carrera bajo concurrencia elevada.
+4. Desacoplamiento Limpio: No depende de HTTPException; emite excepciones de dominio.
+================================================================================
+"""
 
 from typing import Optional
-from app.models.usuario import Usuario, LedgerTransaccion
-from app.models.grupo import MiembroGrupo
 
-# ==============================================================================
-# Motor Transaccional y Ledger Inmutable (QuestFest Financial Engine)
-# ==============================================================================
-# Este módulo es el núcleo financiero de la aplicación.
-# Cada operación que involucra QuestCoins (abono de premios, cobro de apuestas,
-# retención de duelos, recompensas de misiones o multas arbitrales) DEBE canalizarse
-# a través de 'move_tokens'.
-#
-# Principios ACID Garantizados:
-# 1. Atomicidad: El balance del usuario (o del miembro del grupo) se actualiza y el asiento
-#    contable en 'ledger_transacciones' se registra dentro de la misma transacción de BD.
-# 2. Consistencia: La base de datos (PostgreSQL) valida las restricciones 'saldo_actual >= 0'
-#    y 'saldo_grupo >= 0'. Si un usuario no tiene fondos suficientes, el motor de la BD
-#    aborta la operación con un IntegrityError.
-# 3. Aislamiento: El uso de 'UPDATE ... RETURNING' previene lecturas sucias (dirty reads)
-#    y condiciones de carrera bajo concurrencia elevada.
-# ==============================================================================
+from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import (
+    DomainException,
+    EntityNotFoundError,
+    InsufficientBalanceError,
+)
+from app.models.grupo import MiembroGrupo
+from app.models.usuario import LedgerTransaccion, Usuario
+
 
 async def move_tokens(
     db: AsyncSession,
@@ -31,11 +40,11 @@ async def move_tokens(
     amount: int,
     concept: str,
     auto_commit: bool = True,
-    group_id: Optional[int] = None
+    group_id: Optional[int] = None,
 ) -> None:
     """
     Transfiere o deduce QuestCoins de un usuario de forma atómica y segura.
-    
+
     Parámetros:
     - db: Sesión asíncrona activa de SQLAlchemy.
     - user_id: ID del jugador titular de la cuenta.
@@ -49,7 +58,7 @@ async def move_tokens(
     # Si el importe es 0, no hay movimiento económico ni necesidad de ensuciar el Ledger
     if amount == 0:
         return
-        
+
     try:
         nuevo_saldo = None
 
@@ -71,9 +80,8 @@ async def move_tokens(
             nuevo_saldo = result.scalar()
 
             if nuevo_saldo is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="El usuario no pertenece a este grupo para la transacción económica."
+                raise EntityNotFoundError(
+                    "El usuario no pertenece a este grupo para la transacción económica."
                 )
         else:
             # ------------------------------------------------------------------
@@ -88,12 +96,9 @@ async def move_tokens(
             )
             result = await db.execute(stmt)
             nuevo_saldo = result.scalar()
-            
+
             if nuevo_saldo is None:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Usuario no encontrado para la transacción económica."
-                )
+                raise EntityNotFoundError("Usuario no encontrado para la transacción económica.")
 
         # Asiento contable en el Ledger con la instantánea del saldo resultante
         transaccion = LedgerTransaccion(
@@ -101,7 +106,7 @@ async def move_tokens(
             grupo_id=group_id,
             cantidad=amount,
             concepto=concept,
-            saldo_resultante=nuevo_saldo
+            saldo_resultante=nuevo_saldo,
         )
         db.add(transaccion)
 
@@ -114,14 +119,14 @@ async def move_tokens(
         # Hacemos rollback defensivo para liberar bloqueos y devolver un error semántico limpio.
         if auto_commit:
             await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Transacción denegada. Saldo insuficiente para realizar la operación."
+        raise InsufficientBalanceError(
+            "Transacción denegada. Saldo insuficiente para realizar la operación."
         )
+    except DomainException:
+        if auto_commit:
+            await db.rollback()
+        raise
     except Exception as e:
         # Captura de contingencia ante fallos de conexión o caídas inesperadas
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error crítico en el motor económico: {str(e)}"
-        )
+        raise DomainException(f"Error crítico en el motor económico: {str(e)}")

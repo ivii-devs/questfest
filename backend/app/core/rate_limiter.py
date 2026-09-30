@@ -1,7 +1,9 @@
 import ipaddress
 import os
+
 from fastapi import Request
 from slowapi import Limiter
+
 
 def get_real_client_ip(request: Request) -> str:
     """
@@ -40,7 +42,7 @@ def get_real_client_ip(request: Request) -> str:
     x_forwarded_for = request.headers.get("x-forwarded-for")
     if x_forwarded_for:
         raw_ips = [ip.strip() for ip in x_forwarded_for.split(",") if ip.strip()]
-        
+
         # Recorremos de derecha a izquierda (desde el último proxy hacia el cliente original)
         for candidate in reversed(raw_ips):
             try:
@@ -73,10 +75,15 @@ def get_real_client_ip(request: Request) -> str:
 # Durante la ejecución de suites de pruebas automatizadas (E2E), el limitador se desactiva
 # preventivamente si TESTING=true o RATE_LIMIT_ENABLED=false para garantizar ejecuciones continuas sin falsos 429.
 redis_url = os.getenv("REDIS_URL", None)
-is_rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in ("true", "1") and os.getenv("TESTING", "").lower() not in ("true", "1")
+is_rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() in (
+    "true",
+    "1",
+) and os.getenv("TESTING", "").lower() not in ("true", "1")
 
 if redis_url:
-    limiter = Limiter(key_func=get_real_client_ip, storage_uri=redis_url, enabled=is_rate_limit_enabled)
+    limiter = Limiter(
+        key_func=get_real_client_ip, storage_uri=redis_url, enabled=is_rate_limit_enabled
+    )
 else:
     # Almacenamiento en memoria RAM local (ideal para tests y desarrollo)
     limiter = Limiter(key_func=get_real_client_ip, enabled=is_rate_limit_enabled)

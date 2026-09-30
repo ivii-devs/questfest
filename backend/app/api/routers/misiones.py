@@ -18,23 +18,30 @@ Ciclo de vida de una misión:
 ================================================================================
 """
 
-from fastapi import APIRouter, Depends, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.database import get_db
+from app.crud import misiones_crud
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.schemas.misiones_schemas import SuggestMissionRequest, CompleteMissionRequest, MissionResponse, VoteProposalRequest
-from app.crud import misiones_crud
+from app.schemas.misiones_schemas import (
+    CompleteMissionRequest,
+    MissionResponse,
+    SuggestMissionRequest,
+    VoteProposalRequest,
+)
 
 router = APIRouter()
+
 
 @router.post("/suggest", status_code=status.HTTP_201_CREATED)
 async def suggest_mission(
     request: SuggestMissionRequest,
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Registra una sugerencia de misión creada por un jugador.
@@ -43,46 +50,60 @@ async def suggest_mission(
     mision = await misiones_crud.suggest_mission(db, current_user.id, request)
     return {"message": "Misión sugerida con éxito", "mission_id": mision.id}
 
+
 @router.get("/", response_model=List[MissionResponse])
 async def list_missions(
     group_id: Optional[int] = Query(None, description="ID del grupo para filtrar misiones activas"),
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Devuelve las misiones activas disponibles para el grupo solicitado.
     Excluye automáticamente las misiones ocultas de la Ruleta Diaria.
     Incluye el estado de resolución ('completed', 'pending_approval', 'none') del usuario actual.
     """
-    return await misiones_crud.get_active_missions_with_status(db, current_user.id, group_id=group_id)
+    return await misiones_crud.get_active_missions_with_status(
+        db, current_user.id, group_id=group_id
+    )
+
 
 @router.get("/suggested", response_model=List[MissionResponse])
 async def list_suggested_missions(
-    group_id: Optional[int] = Query(None, description="ID del grupo para filtrar misiones sugeridas"),
+    group_id: Optional[int] = Query(
+        None, description="ID del grupo para filtrar misiones sugeridas"
+    ),
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Devuelve las propuestas de misiones del grupo con el desglose de upvotes,
     downvotes y el voto emitido por el usuario que realiza la consulta.
     """
-    return await misiones_crud.get_suggested_missions_with_votes(db, current_user.id, group_id=group_id)
+    return await misiones_crud.get_suggested_missions_with_votes(
+        db, current_user.id, group_id=group_id
+    )
+
 
 @router.get("/closed", response_model=List[MissionResponse])
 async def list_closed_missions(
-    group_id: Optional[int] = Query(None, description="ID del grupo para filtrar misiones cerradas"),
+    group_id: Optional[int] = Query(
+        None, description="ID del grupo para filtrar misiones cerradas"
+    ),
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Devuelve las misiones cerradas o caducadas asociadas al grupo solicitado."""
-    return await misiones_crud.get_closed_missions_with_status(db, current_user.id, group_id=group_id)
+    return await misiones_crud.get_closed_missions_with_status(
+        db, current_user.id, group_id=group_id
+    )
+
 
 @router.post("/{mission_id}/vote", status_code=status.HTTP_200_OK)
 async def vote_mission(
     mission_id: int,
     request: VoteProposalRequest,
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Emite un voto ('up' o 'down') sobre una misión en fase de sugerencia.
@@ -90,17 +111,18 @@ async def vote_mission(
     """
     return await misiones_crud.vote_mission(db, mission_id, current_user.id, request.vote_type)
 
+
 @router.post("/{mission_id}/complete", status_code=status.HTTP_201_CREATED)
 async def complete_mission(
     mission_id: int,
     request: CompleteMissionRequest,
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Envía una prueba gráfica (URL de foto en Cloudinary) o testimonio escrito
     certificando la realización del reto.
-    
+
     La prueba queda en estado 'pending' a la espera de que el Tribunal Administrativo
     la revise y proceda al abono correspondiente de los tokens.
     """

@@ -16,11 +16,13 @@ Medidas de ciberseguridad aplicadas (Defensa en Profundidad):
 ================================================================================
 """
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Request
 import cloudinary.uploader
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from starlette.concurrency import run_in_threadpool
+
+from app.core.rate_limiter import limiter
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
-from app.core.rate_limiter import limiter
 
 router = APIRouter()
 
@@ -28,16 +30,18 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10 MB
 MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50 MB
 
 ALLOWED_IMAGE_SIGNATURES = [
-    b"\xff\xd8\xff",          # JPEG
-    b"\x89PNG\r\n\x1a\n",     # PNG
-    b"GIF87a", b"GIF89a",     # GIF
-    b"RIFF",                  # WebP (start)
+    b"\xff\xd8\xff",  # JPEG
+    b"\x89PNG\r\n\x1a\n",  # PNG
+    b"GIF87a",
+    b"GIF89a",  # GIF
+    b"RIFF",  # WebP (start)
 ]
 
 ALLOWED_VIDEO_SIGNATURES = [
-    b"\x00\x00\x00",          # MP4 / MOV box header
-    b"\x1a\x45\xdf\xa3",      # WebM / MKV
+    b"\x00\x00\x00",  # MP4 / MOV box header
+    b"\x1a\x45\xdf\xa3",  # WebM / MKV
 ]
+
 
 def validate_magic_bytes(contents: bytes, content_type: str) -> bool:
     """
@@ -46,7 +50,7 @@ def validate_magic_bytes(contents: bytes, content_type: str) -> bool:
     """
     if len(contents) < 8:
         return False
-    
+
     if content_type.startswith("image/"):
         for sig in ALLOWED_IMAGE_SIGNATURES:
             if contents.startswith(sig):
@@ -56,8 +60,9 @@ def validate_magic_bytes(contents: bytes, content_type: str) -> bool:
         for sig in ALLOWED_VIDEO_SIGNATURES:
             if contents.startswith(sig):
                 return True
-        return True # Fallback para contenedores de video dinámicos
+        return True  # Fallback para contenedores de video dinámicos
     return False
+
 
 # Soportamos tanto la ruta canónica `/image` como la raíz `/` para evitar errores 404
 # si algún cliente o formulario antiguo envía la petición directamente al prefijo del router.
@@ -67,14 +72,18 @@ def validate_magic_bytes(contents: bytes, content_type: str) -> bool:
 async def upload_image(
     request: Request,
     file: UploadFile = File(...),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
 ):
     """
     Sube una imagen o video a Cloudinary con optimizacion de calidad/formato automatica,
     validacion de firma MIME y limite de tamaño.
     """
-    if not file.content_type or not (file.content_type.startswith("image/") or file.content_type.startswith("video/")):
-        raise HTTPException(status_code=400, detail="El archivo debe ser una imagen o un vídeo valido.")
+    if not file.content_type or not (
+        file.content_type.startswith("image/") or file.content_type.startswith("video/")
+    ):
+        raise HTTPException(
+            status_code=400, detail="El archivo debe ser una imagen o un vídeo valido."
+        )
 
     contents = await file.read()
     file_size = len(contents)
@@ -89,18 +98,12 @@ async def upload_image(
 
     try:
         # Optimizacion automatica de almacenamiento y formato
-        upload_params = {
-            "folder": "questfest/feed",
-            "resource_type": "auto"
-        }
-        
-        if file.content_type.startswith("image/"):
-            upload_params.update({
-                "quality": "auto",
-                "fetch_format": "auto"
-            })
+        upload_params = {"folder": "questfest/feed", "resource_type": "auto"}
 
-        result = cloudinary.uploader.upload(contents, **upload_params)
+        if file.content_type.startswith("image/"):
+            upload_params.update({"quality": "auto", "fetch_format": "auto"})
+
+        result = await run_in_threadpool(cloudinary.uploader.upload, contents, **upload_params)
         # Devolvemos tanto 'secure_url' como 'url' para asegurar compatibilidad retroactiva
         # si algún componente del frontend consume una clave u otra.
         media_url = result.get("secure_url")

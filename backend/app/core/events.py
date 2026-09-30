@@ -1,11 +1,12 @@
 import asyncio
-from typing import Set
 import json
+from typing import Set
+
 
 class EventBroadcaster:
     """
     Bus de Eventos Pub/Sub en Memoria (In-Process) para Server-Sent Events (SSE).
-    
+
     ¿Qué problema resuelve?
     Permite transmitir publicaciones del feed, respuestas y alertas de juego a los navegadores
     en tiempo real mediante una conexión HTTP unidireccional permanente ('/api/feed/stream').
@@ -47,7 +48,7 @@ class EventBroadcaster:
         """
         if not self.listeners:
             return
-            
+
         message = json.dumps({"type": event_type, "payload": data})
         for queue in list(self.listeners):
             try:
@@ -55,6 +56,7 @@ class EventBroadcaster:
             except Exception:
                 # Si una cola saturada rechaza el mensaje, no detenemos la difusión al resto de clientes
                 pass
+
 
 # Instancia única (Singleton) a nivel de proceso accesible globalmente en la aplicación
 broadcaster = EventBroadcaster()

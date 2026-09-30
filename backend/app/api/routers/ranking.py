@@ -19,19 +19,21 @@ Optimización SQL y Multi-Tenancy:
 ================================================================================
 """
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models.usuario import Usuario
-from app.models.juegos import TicketApuesta, Apuesta, Duelo
-from app.models.misiones import Mision, PruebaMision
 from app.models.grupo import MiembroGrupo
+from app.models.juegos import Apuesta, Duelo, TicketApuesta
+from app.models.misiones import Mision, PruebaMision
+from app.models.usuario import Usuario
 
 router = APIRouter()
+
 
 class RankingUserItem(BaseModel):
     username: str
@@ -40,6 +42,7 @@ class RankingUserItem(BaseModel):
     apuestas_acertadas: int
     misiones_completadas: int
     duelos_ganados: int
+
 
 @router.get("/", response_model=List[RankingUserItem])
 async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
@@ -56,8 +59,8 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
                 and_(
                     TicketApuesta.usuario_id == Usuario.id,
                     TicketApuesta.grupo_id == group_id,
-                    Apuesta.estado == 'cerrada',
-                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id
+                    Apuesta.estado == "cerrada",
+                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id,
                 )
             )
             .scalar_subquery()
@@ -71,7 +74,7 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
                 and_(
                     PruebaMision.usuario_id == Usuario.id,
                     Mision.grupo_id == group_id,
-                    PruebaMision.estado == 'approved'
+                    PruebaMision.estado == "approved",
                 )
             )
             .scalar_subquery()
@@ -84,7 +87,7 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
                 and_(
                     Duelo.ganador_id == Usuario.id,
                     Duelo.grupo_id == group_id,
-                    Duelo.estado == 'completed'
+                    Duelo.estado == "completed",
                 )
             )
             .scalar_subquery()
@@ -95,10 +98,10 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
             select(
                 Usuario.username,
                 Usuario.avatar_url,
-                MiembroGrupo.saldo_grupo.label('saldo_actual'),
-                subq_apuestas.label('apuestas_acertadas'),
-                subq_misiones.label('misiones_completadas'),
-                subq_duelos.label('duelos_ganados')
+                MiembroGrupo.saldo_grupo.label("saldo_actual"),
+                subq_apuestas.label("apuestas_acertadas"),
+                subq_misiones.label("misiones_completadas"),
+                subq_duelos.label("duelos_ganados"),
             )
             .join(MiembroGrupo, MiembroGrupo.usuario_id == Usuario.id)
             .where(MiembroGrupo.grupo_id == group_id)
@@ -111,8 +114,8 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
             .where(
                 and_(
                     TicketApuesta.usuario_id == Usuario.id,
-                    Apuesta.estado == 'cerrada',
-                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id
+                    Apuesta.estado == "cerrada",
+                    TicketApuesta.opcion_id == Apuesta.opcion_ganadora_id,
                 )
             )
             .scalar_subquery()
@@ -120,38 +123,32 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
 
         subq_misiones = (
             select(func.count(PruebaMision.id))
-            .where(
-                and_(
-                    PruebaMision.usuario_id == Usuario.id,
-                    PruebaMision.estado == 'approved'
-                )
-            )
+            .where(and_(PruebaMision.usuario_id == Usuario.id, PruebaMision.estado == "approved"))
             .scalar_subquery()
         )
 
         subq_duelos = (
             select(func.count(Duelo.id))
-            .where(
-                and_(
-                    Duelo.ganador_id == Usuario.id,
-                    Duelo.estado == 'completed'
-                )
-            )
+            .where(and_(Duelo.ganador_id == Usuario.id, Duelo.estado == "completed"))
             .scalar_subquery()
         )
 
-        query = select(
-            Usuario.username,
-            Usuario.avatar_url,
-            Usuario.saldo_actual,
-            subq_apuestas.label('apuestas_acertadas'),
-            subq_misiones.label('misiones_completadas'),
-            subq_duelos.label('duelos_ganados')
-        ).where(Usuario.rol.in_(['player', 'admin'])).order_by(Usuario.saldo_actual.desc())
+        query = (
+            select(
+                Usuario.username,
+                Usuario.avatar_url,
+                Usuario.saldo_actual,
+                subq_apuestas.label("apuestas_acertadas"),
+                subq_misiones.label("misiones_completadas"),
+                subq_duelos.label("duelos_ganados"),
+            )
+            .where(Usuario.rol.in_(["player", "admin"]))
+            .order_by(Usuario.saldo_actual.desc())
+        )
 
     result = await db.execute(query)
     rows = result.all()
-    
+
     return [
         RankingUserItem(
             username=row.username,
@@ -159,7 +156,7 @@ async def get_global_ranking(group_id: Optional[int] = None, db: AsyncSession = 
             saldo_actual=row.saldo_actual,
             apuestas_acertadas=row.apuestas_acertadas or 0,
             misiones_completadas=row.misiones_completadas or 0,
-            duelos_ganados=row.duelos_ganados or 0
-        ) for row in rows
+            duelos_ganados=row.duelos_ganados or 0,
+        )
+        for row in rows
     ]
-

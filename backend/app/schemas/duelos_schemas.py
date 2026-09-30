@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class DuelStatusEnum(str, Enum):
     pending = "pending"
@@ -10,10 +12,12 @@ class DuelStatusEnum(str, Enum):
     completed = "completed"
     penalized_challenger = "penalized_challenger"
 
+
 class DuelResolutionEnum(str, Enum):
     challenger = "challenger"
     challenged = "challenged"
     draw = "draw"
+
 
 class DuelCreateRequest(BaseModel):
     challenged_username: str = Field(..., min_length=3)
@@ -21,8 +25,10 @@ class DuelCreateRequest(BaseModel):
     wager: int = Field(..., gt=0, description="Tokens en juego")
     group_id: Optional[int] = Field(None, description="ID del grupo al que pertenece el duelo")
 
+
 class ResolveDuelRequest(BaseModel):
     resolution: DuelResolutionEnum
+
 
 class DuelResponse(BaseModel):
     id: int

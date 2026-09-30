@@ -15,17 +15,19 @@ Ajustes administrados:
 
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
 from app.core.database import get_db
 from app.dependencies import get_current_user
-from app.models.usuario import Usuario
 from app.models.configuracion import ConfiguracionGlobal
+from app.models.usuario import Usuario
 from app.schemas.settings_schemas import ReglasResponse, ReglasUpdate
 
 router = APIRouter()
+
 
 @router.get("/rules", response_model=ReglasResponse)
 async def get_rules(db: AsyncSession = Depends(get_db)):
@@ -33,7 +35,9 @@ async def get_rules(db: AsyncSession = Depends(get_db)):
     Obtiene el texto canónico de las reglas del juego.
     Si no existe aún un registro personalizado en la BD, retorna el texto por defecto.
     """
-    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "reglas"))
+    config = await db.scalar(
+        select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "reglas")
+    )
     default_rules = (
         "Reglas del evento:\n"
         "1. Las decisiones del Tribunal son definitivas.\n"
@@ -42,33 +46,36 @@ async def get_rules(db: AsyncSession = Depends(get_db)):
     )
     return ReglasResponse(reglas=config.valor if config else default_rules)
 
+
 @router.put("/rules", response_model=ReglasResponse)
 async def update_rules(
-    rules_update: ReglasUpdate, 
-    current_user: Usuario = Depends(get_current_user), 
-    db: AsyncSession = Depends(get_db)
+    rules_update: ReglasUpdate,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Actualiza el texto de las reglas del juego.
     Operación restringida exclusivamente a usuarios con rol 'admin'.
     """
-    if current_user.rol != 'admin':
+    if current_user.rol != "admin":
         raise HTTPException(status_code=403, detail="No tienes permisos para editar las reglas")
-    
-    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "reglas"))
+
+    config = await db.scalar(
+        select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "reglas")
+    )
     if not config:
         config = ConfiguracionGlobal(clave="reglas", valor=rules_update.reglas)
         db.add(config)
     else:
         config.valor = rules_update.reglas
-    
+
     await db.commit()
     return ReglasResponse(reglas=config.valor)
 
+
 @router.get("/boletin")
 async def get_boletin_config(
-    group_id: Optional[int] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    group_id: Optional[int] = Query(None), db: AsyncSession = Depends(get_db)
 ):
     """
     Recupera la configuración de visibilidad del boletín diario matutino.
@@ -85,12 +92,14 @@ async def get_boletin_config(
         "mostMissions": True,
         "duelWinner": True,
         "biggestWinner": True,
-        "biggestLoser": True
+        "biggestLoser": True,
     }
 
     if group_id is not None:
         group_config = await db.scalar(
-            select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == f"boletin_config_group_{group_id}")
+            select(ConfiguracionGlobal).where(
+                ConfiguracionGlobal.clave == f"boletin_config_group_{group_id}"
+            )
         )
         if group_config and group_config.valor:
             try:
@@ -99,7 +108,9 @@ async def get_boletin_config(
             except Exception:
                 pass
 
-    config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "boletin_config"))
+    config = await db.scalar(
+        select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == "boletin_config")
+    )
     if config and config.valor:
         try:
             parsed = json.loads(config.valor)
@@ -109,12 +120,13 @@ async def get_boletin_config(
 
     return default_config
 
+
 @router.put("/boletin")
 async def update_boletin_config(
     payload: dict = Body(...),
     group_id: Optional[int] = Query(None),
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Persiste la configuración del boletín serializándola a formato JSON string.
@@ -125,16 +137,17 @@ async def update_boletin_config(
 
     # Verificación de permisos: Admin global o Admin local del grupo
     is_authorized = False
-    if current_user.rol == 'admin':
+    if current_user.rol == "admin":
         is_authorized = True
     elif target_group_id is not None:
         from app.models.grupo import MiembroGrupo
+
         membership = await db.scalar(
             select(MiembroGrupo).where(
                 and_(
                     MiembroGrupo.usuario_id == current_user.id,
                     MiembroGrupo.grupo_id == target_group_id,
-                    MiembroGrupo.rol == 'admin'
+                    MiembroGrupo.rol == "admin",
                 )
             )
         )
@@ -144,7 +157,11 @@ async def update_boletin_config(
     if not is_authorized:
         raise HTTPException(status_code=403, detail="No tienes permisos para editar el boletín")
 
-    clave = f"boletin_config_group_{target_group_id}" if target_group_id is not None else "boletin_config"
+    clave = (
+        f"boletin_config_group_{target_group_id}"
+        if target_group_id is not None
+        else "boletin_config"
+    )
 
     config = await db.scalar(select(ConfiguracionGlobal).where(ConfiguracionGlobal.clave == clave))
     valor_str = json.dumps(payload)

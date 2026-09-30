@@ -16,28 +16,29 @@ Principios de diseño y seguridad:
 ================================================================================
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.rate_limiter import limiter
+from app.crud import misiones_crud
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.misiones_schemas import MissionResponse
-from app.crud import misiones_crud
-from app.core.rate_limiter import limiter
 
 router = APIRouter()
+
 
 @router.post("/spin", response_model=MissionResponse, status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")
 async def spin_roulette(
     request: Request,
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Ejecuta el giro diario de la Ruleta.
-    
+
     Verifica que el usuario no haya agotado su tirada del día en `RegistroRuleta`,
     selecciona aleatoriamente una misión del bombo y quema el tiro de forma atómica.
     """
@@ -50,8 +51,9 @@ async def spin_roulette(
         "phase": mission.fase,
         "is_roulette": mission.es_ruleta,
         "max_completions": mission.cupo_maximo,
-        "author": str(mission.creador_id)
+        "author": str(mission.creador_id),
     }
+
 
 @router.post("/accept/{mission_id}", status_code=status.HTTP_200_OK)
 @limiter.limit("10/minute")
@@ -59,30 +61,28 @@ async def accept_roulette_mission(
     request: Request,
     mission_id: int,
     current_user: Usuario = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Confirma la aceptación de la misión asignada tras el giro de ruleta.
-    
+
     Captura de `IntegrityError`:
     Si el usuario intenta aceptar dos veces la misma misión (por ejemplo, pulsando
     el botón repetidamente), la clave primaria/única en base de datos salta y
     capturamos el error para devolver un código HTTP 400 limpio sin romper la sesión.
     """
-    from app.models.misiones import MisionRuletaAceptada
     from sqlalchemy.exc import IntegrityError
-    
-    aceptada = MisionRuletaAceptada(
-        mision_id=mission_id,
-        usuario_id=current_user.id
-    )
+
+    from app.models.misiones import MisionRuletaAceptada
+
+    aceptada = MisionRuletaAceptada(mision_id=mission_id, usuario_id=current_user.id)
     db.add(aceptada)
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Ya has aceptado esta misión anteriormente."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya has aceptado esta misión anteriormente.",
         )
     return {"message": "Misión de ruleta aceptada con éxito"}
