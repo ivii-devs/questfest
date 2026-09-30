@@ -1,6 +1,7 @@
+import asyncio
+import logging
 import os
 import sys
-import asyncio
 
 # En sistemas operativos Windows, el bucle de eventos por defecto desde Python 3.8 es ProactorEventLoop (IOCP).
 # Cuando se gestionan conexiones asíncronas remotas seguras (TLS/SSL) o pools con proxies como PgBouncer/Supavisor,
@@ -11,15 +12,40 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from slowapi.errors import RateLimitExceeded
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.api.routers import users, apuestas, duelos, misiones, ruleta, admin, publicaciones, settings, notifications, upload, ranking, public_profile, groups
+from app.api.routers import (
+    admin,
+    apuestas,
+    duelos,
+    groups,
+    misiones,
+    notifications,
+    public_profile,
+    publicaciones,
+    ranking,
+    ruleta,
+    settings,
+    upload,
+    users,
+)
 from app.core.cloudinary_config import init_cloudinary
+from app.core.exceptions import (
+    ConflictError,
+    DomainException,
+    EntityNotFoundError,
+    InsufficientBalanceError,
+    InvalidStateTransitionError,
+    PermissionDeniedError,
+    UnauthorizedError,
+)
 from app.core.rate_limiter import limiter
-
 
 app = FastAPI(title="QuestFest API")
 
@@ -30,19 +56,53 @@ app = FastAPI(title="QuestFest API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
-import logging
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logging.getLogger("uvicorn.error").error(f"[422 Validation Error] Path: {request.url.path} | Errors: {exc.errors()} | Body: {exc.body}")
+    logging.getLogger("uvicorn.error").error(
+        f"[422 Validation Error] Path: {request.url.path} | Errors: {exc.errors()} | Body: {exc.body}"
+    )
     return JSONResponse(status_code=422, content={"detail": jsonable_encoder(exc.errors())})
+
+
+@app.exception_handler(EntityNotFoundError)
+async def entity_not_found_handler(request: Request, exc: EntityNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": exc.message})
+
+
+@app.exception_handler(InsufficientBalanceError)
+async def insufficient_balance_handler(request: Request, exc: InsufficientBalanceError):
+    return JSONResponse(status_code=400, content={"detail": exc.message})
+
+
+@app.exception_handler(InvalidStateTransitionError)
+async def invalid_state_handler(request: Request, exc: InvalidStateTransitionError):
+    return JSONResponse(status_code=400, content={"detail": exc.message})
+
+
+@app.exception_handler(PermissionDeniedError)
+async def permission_denied_handler(request: Request, exc: PermissionDeniedError):
+    return JSONResponse(status_code=403, content={"detail": exc.message})
+
+
+@app.exception_handler(UnauthorizedError)
+async def unauthorized_handler(request: Request, exc: UnauthorizedError):
+    return JSONResponse(status_code=401, content={"detail": exc.message})
+
+
+@app.exception_handler(ConflictError)
+async def conflict_handler(request: Request, exc: ConflictError):
+    return JSONResponse(status_code=400, content={"detail": exc.message})
+
+
+@app.exception_handler(DomainException)
+async def domain_exception_handler(request: Request, exc: DomainException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
 
 
 # Inicializar servicios externos (almacenamiento de imágenes y media en la nube)
 init_cloudinary()
+
 
 # Middleware para Cabeceras de Seguridad HTTP
 # Aplicamos una capa defensiva estándar para proteger la API y mitigar ataques comunes en la web:
@@ -60,6 +120,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
+
 
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -103,6 +164,7 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["Not
 app.include_router(upload.router, prefix="/api/upload", tags=["Uploads"])
 app.include_router(ranking.router, prefix="/api/ranking", tags=["Ranking"])
 app.include_router(groups.router, prefix="/api/groups", tags=["Grupos"])
+
 
 @app.get("/")
 def read_root():

@@ -1,8 +1,9 @@
 import os
 from datetime import datetime, timedelta, timezone
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+
 from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 
 # ==============================================================================
 # Motor Criptográfico y Gestión de Tokens JWT para QuestFest
@@ -42,16 +43,21 @@ import bcrypt
 import passlib.handlers.bcrypt
 
 if not hasattr(bcrypt, "__about__"):
+
     class _BcryptAbout:
         __version__ = getattr(bcrypt, "__version__", "4.0.0")
+
     bcrypt.__about__ = _BcryptAbout()
 
 _orig_calc_checksum = passlib.handlers.bcrypt._BcryptBackend._calc_checksum
+
+
 def _safe_calc_checksum(self, secret):
     # Si la contraseña supera los 72 bytes, la truncamos de forma segura para no provocar un crash en Bcrypt
     if isinstance(secret, bytes) and len(secret) > 72:
         secret = secret[:72]
     return _orig_calc_checksum(self, secret)
+
 
 passlib.handlers.bcrypt._BcryptBackend._calc_checksum = _safe_calc_checksum
 
@@ -118,6 +124,5 @@ def decode_token(token: str) -> dict:
         return payload
     except JWTError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido o expirado"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado"
         )
