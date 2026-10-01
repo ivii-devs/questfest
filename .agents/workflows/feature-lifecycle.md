@@ -15,7 +15,7 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
                │
                ▼
 [3. Quality Gate y Auditoría de Seguridad]
-   (Pruebas pytest/npm + Verificación OWASP & Ledger)
+   (Tests E2E solo bajo petición explícita + Verificación OWASP & Ledger)
                ├──> [Defectos detectados] ──> (Retorna a fase 2 para corrección)
                │
                └──> [Validación Conforme]
@@ -43,24 +43,24 @@ Este workflow define el procedimiento estándar y secuencial que el **Agente Ún
   - Si afecta a la interfaz de usuario, aplica rigurosamente los estándares PWA: enfoque Mobile-First, target táctil $\ge 48\times 48\text{ px}$, safe-area-inset y degradación offline ([context/pwa-standards.md](../context/pwa-standards.md)).
 
 - [ ] **Fase 3: Quality Gate E2E-First y Auditoría de Seguridad (Zero-Trust)**
-  - **Condición de activación**: Esta fase se activa **únicamente** tras haber modificado código en Fase 2. Quedan excluidas las consultas, diseños, redacción de planes de implementación o modificaciones exclusivas de documentación.
-  - **Directiva E2E-First**: Prohibidas las pruebas unitarias post-hoc, tautológicas o detectoras de cambios. Consulta el estándar canónico en [context/testing-standards.md](../context/testing-standards.md).
-  - **Ejecución del Modelo Dual E2E**:
+  - **Condición de Activación de Tests E2E**: Los tests end-to-end (Playwright, Pytest E2E) se diseñan y ejecutan **única y exclusivamente bajo petición explícita del usuario**. Si el usuario no ha solicitado explícitamente ejecutar pruebas E2E, esta fase se limita a la verificación estática de código, auditoría de seguridad Zero-Trust y comprobación de invariantes de negocio/Ledger, avanzando directamente a la Fase 4 sin ejecutar suites de prueba.
+  - **Directiva E2E-First (bajo petición explícita)**: Prohibidas las pruebas unitarias post-hoc, tautológicas o detectoras de cambios. Consulta el estándar canónico en [context/testing-standards.md](../context/testing-standards.md).
+  - **Ejecución del Modelo Dual E2E (cuando sea solicitado por el usuario)**:
     - **Frontend & PWA (Playwright)**: Ejecuta `npm run test:e2e` desde `frontend/` para verificar interfaces Mobile-First (`Pixel 7`, `iPhone 15`), áreas táctiles $\ge 48\times 48\text{ px}$, degradación offline y escenarios multi-actor con sesiones aisladas.
     - **Backend & Ledger (Pytest + HTTPX)**: Ejecuta `.\venv\Scripts\pytest tests/ -v` desde `backend/` para validar contratos REST, persistencia real, transacciones atómicas y bloqueos pesimistas (`.with_for_update()`).
-  - **Rúbrica de Complejidad Obligatoria**: Los escenarios E2E deben ser de dificultad media-alta (cubrir mínimo 3 de los 4 ejes: multi-actor, mutación en Ledger, inyección de fallos/resiliencia y transición multi-estado).
+  - **Rúbrica de Complejidad Obligatoria**: Cuando se soliciten pruebas, los escenarios E2E deben ser de dificultad media-alta (cubrir mínimo 3 de los 4 ejes: multi-actor, mutación en Ledger, inyección de fallos/resiliencia y transición multi-estado).
   - **Aislamiento Condicionado**: Si un algoritmo requiere aislamiento, valida que se haya documentado la *Matriz de Modos de Fallo Pre-Mortem* antes de codificar.
   - **Auditoría de Seguridad y Ledger**:
     - Consultas SQLAlchemy parametrizadas (sin inyección SQL).
     - Protección y validación de endpoints y DTOs con Pydantic v2.
     - Cero fugas contables: verificar que todo movimiento de QuestCoins esté respaldado atómicamente en `LedgerTransaccion`.
     - Soberanía absoluta del backend en azar y recompensas.
-  - **Artefacto Verificable y Reproducible**: Al finalizar las pruebas, genera y documenta el reporte formal con trazas, estado de Ledger verificado y comando determinista de reproducción.
+  - **Artefacto Verificable y Reproducible**: Al finalizar las pruebas E2E solicitadas, genera y documenta el reporte formal con trazas, estado de Ledger verificado y comando determinista de reproducción.
   - **Higiene de Puertos y Ciclo de Vida de Procesos**:
-    - Previo a lanzar suites o servidores auxiliares, verificar puertos libres (3000, 8000) o ejecutar limpieza preventiva (ej. `node scripts/clean-ports.js`).
+    - Previo a lanzar suites o servidores auxiliares (en caso de pruebas solicitadas), verificar puertos libres (3000, 8000) o ejecutar limpieza preventiva (ej. `node scripts/clean-ports.js`).
     - Configurar procesos demonio (`uvicorn`, `npm run dev`) con `IsDaemon: true` y validar operatividad inmediatamente mediante inspección de logs, sin esperar el cierre del proceso.
     - Ejecutar un teardown estricto matando activamente (`manage_task` con `Action: 'kill'`) cualquier servidor o demonio auxiliar tan pronto finalicen las pruebas, erradicando procesos zombi ([tools/permissions.md](../tools/permissions.md)).
-  - **Criterio de Aprobación**: Si algún test falla o se detecta una vulnerabilidad, se corrigen los defectos en Fase 2 antes de avanzar.
+  - **Criterio de Aprobación**: Si se solicitaron pruebas y algún test falla, o si se detecta una vulnerabilidad en la auditoría, se corrigen los defectos en Fase 2 antes de avanzar.
 
 - [ ] **Fase 4: Sincronización con el Vault de Obsidian**
   - Ejecuta el procedimiento determinista estipulado en [workflows/sync-vault.md](sync-vault.md).

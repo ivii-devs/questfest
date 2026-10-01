@@ -2,6 +2,10 @@
 
 Este documento establece la metodología oficial, inmutable y exhaustiva de aseguramiento de calidad (QA) y testing para QuestFest. Todo desarrollo, refactorización o corrección implementada por el Agente Único debe regirse estrictamente por este estándar.
 
+> [!IMPORTANT]
+> **Condición de Activación: Solo Bajo Petición Explícita**:
+> En QuestFest, el diseño y la ejecución de pruebas end-to-end (E2E) y suites automatizadas se realizan **única y exclusivamente bajo petición explícita del usuario**. El agente nunca ejecutará suites E2E de forma autónoma sin que medie dicha solicitud expresa. Cuando el usuario solicite explícitamente realizar pruebas, se aplicará con el máximo rigor el estándar E2E-First descrito a continuación.
+
 ---
 
 ## 1. El Paradigma de Calidad: Los 7 Principios Inmutables
@@ -27,14 +31,15 @@ flowchart TD
 
 ---
 
-### Principio 2: E2E-First como Mecanismo Prioritario y Artefacto Reproducible
+### Principio 2: E2E-First como Mecanismo Prioritario (Bajo Petición Explícita) y Artefacto Reproducible
+- **Condición Previa Ineludible**: Se ejecuta **única y exclusivamente bajo petición explícita del usuario**. El agente jamás ejecutará la suite E2E de forma autónoma.
 - **Fundamento Técnico**: En arquitecturas desacopladas como QuestFest, los fallos reales emergen de la interacción de capas:
   - Middlewares de autenticación y verificación de cookies `HttpOnly`.
   - Serialización y validación estricta en esquemas Pydantic v2.
   - Transacciones atómicas en PostgreSQL con bloqueo pesimista (`.with_for_update()`).
   - Reactividad de la interfaz PWA bajo condiciones Mobile-First y desconexión.
-- **Directiva Obligatoria**: La suite E2E es el mecanismo de verificación primario.
-- **Generación Obligatoria del Artefacto**: Toda verificación E2E debe culminar en la producción de un artefacto formal, verificable y reproducible (por ejemplo, en el directorio de artefactos o reporte documentado) que contenga:
+- **Directiva Obligatoria**: Cuando se soliciten pruebas, la suite E2E es el mecanismo de verificación primario.
+- **Generación Obligatoria del Artefacto**: Toda verificación E2E ejecutada bajo petición debe culminar en la producción de un artefacto formal, verificable y reproducible (por ejemplo, en el directorio de artefactos o reporte documentado) que contenga:
   1. **Matriz de Ejecución**: Escenario probado, actores participantes (Admin, Jugador 1, Jugador 2) e inputs emitidos.
   2. **Trazas y Estado Contable**: Estado inicial en BD -> Requests HTTP / Acciones UI -> Códigos de respuesta -> Estado resultante en `LedgerTransaccion` y balance de QuestCoins.
   3. **Evidencias Forenses**: Referencia a trazas de Playwright (`.zip`), capturas de pantalla o logs de red.
@@ -99,7 +104,7 @@ flowchart TD
 
 ## 2. El Modelo E2E en Dos Niveles (Dual-Tier E2E)
 
-QuestFest adopta dos herramientas complementarias según la capa de límite a evaluar:
+QuestFest adopta dos herramientas complementarias según la capa de límite a evaluar (a ejecutar única y exclusivamente bajo petición explícita del usuario):
 
 ```
                                ┌────────────────────────────────────────────────────────┐
@@ -135,7 +140,7 @@ QuestFest adopta dos herramientas complementarias según la capa de límite a ev
   - `frontend/.playwright/`: Caché interna del navegador.
 
 ### B. Formato Estándar del Artefacto de Verificación E2E
-Cada ciclo de verificación concluido debe documentar un artefacto con el siguiente esquema:
+Cada ciclo de verificación E2E concluido (tras haber sido solicitado explícitamente) debe documentar un artefacto con el siguiente esquema:
 ```markdown
 # Reporte de Verificación E2E: [Nombre de la Funcionalidad / Escenario]
 

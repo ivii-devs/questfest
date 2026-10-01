@@ -9,7 +9,7 @@ El agente actúa con responsabilidad completa de extremo a extremo:
 - Analiza y planifica la arquitectura técnica.
 - Desarrolla tanto backend (FastAPI, SQLAlchemy, Alembic) como frontend (Next.js 16, React 19, Tailwind v4 PWA).
 - Asegura la integridad de la base de datos y la economía del juego.
-- Diseña y ejecuta pruebas automatizadas de calidad y seguridad.
+- Diseña y ejecuta pruebas automatizadas de calidad y seguridad bajo petición explícita del usuario.
 - Mantiene la documentación viva sincronizada en el Vault de Obsidian.
 - Gestiona el repositorio de Git bajo estricto visto bueno del usuario.
 
@@ -35,17 +35,18 @@ Todo desarrollo, refactorización o corrección debe regirse simultáneamente po
 - Redacta comentarios explicativos en español como si un desarrollador senior le estuviera explicando el código a un compañero en vivo.
 - Explica siempre el **"por qué"** (intención de negocio, trampas técnicas de Safari/PWA, efectos secundarios, compromisos de diseño _trade-offs_), nunca el "qué" evidente o sintáctico.
 
-### 3. Pruebas de Calidad (Quality Gate E2E-First)
+### 3. Pruebas de Calidad (Quality Gate E2E-First bajo Petición Explícita)
 
 - **Fuentes**: [context/testing-standards.md](context/testing-standards.md) y [workflows/feature-lifecycle.md](workflows/feature-lifecycle.md).
+- **Condición de Activación Ineludible**: Las pruebas end-to-end (E2E) se diseñan y ejecutan **única y exclusivamente bajo petición explícita del usuario**. El agente nunca ejecutará suites E2E por iniciativa propia.
 - Aplica tipado estricto en TypeScript (`strict: true`) y Python (type hints y esquemas Pydantic v2).
-- **Modelo E2E en dos niveles**: Valida flujos de interfaz y Mobile-First PWA con Playwright (`npm run test:e2e`), y contratos API REST, integridad del Ledger y persistencia con `pytest` y `httpx.AsyncClient`.
+- **Modelo E2E en dos niveles (bajo petición)**: Cuando el usuario solicite pruebas, valida flujos de interfaz y Mobile-First PWA con Playwright (`npm run test:e2e`), y contratos API REST, integridad del Ledger y persistencia con `pytest` y `httpx.AsyncClient`.
 - **Cero pruebas unitarias post-hoc**: Prohibido crear tests unitarios sintéticos tras codificar. La verificación sobre código existente se efectúa siempre en los límites del sistema mediante pruebas E2E.
 - **Aislamiento con Pre-Mortem Adversarial**: Si se prueba un componente en aislamiento, se escribe PRIMERO la Matriz de Modos de Fallo, se codifican los tests de fallo y DESPUÉS se implementa el código.
-- **Escenarios de Dificultad Media-Alta**: Todo escenario E2E debe abarcar al menos 3 de los 4 ejes obligatorios (Multi-actor, Mutación contable en Ledger, Inyección de fallos y resiliencia, Transición multi-estado).
+- **Escenarios de Dificultad Media-Alta**: Cuando se soliciten pruebas, todo escenario E2E debe abarcar al menos 3 de los 4 ejes obligatorios (Multi-actor, Mutación contable en Ledger, Inyección de fallos y resiliencia, Transición multi-estado).
 - **Erradicación de pruebas perjudiciales**: Prohibidas las pruebas tautológicas y las pruebas detectoras de cambios (change-detectors). Los bugs se corrigen cubriendo brechas conductuales, sin micro-regresiones cosméticas.
-- **Artefacto Verificable y Reproducible**: Toda verificación E2E concluye con la generación de un artefacto formal con trazas, deltas de Ledger auditados y comando determinista de reejecución.
-- **Ámbito de exclusión**: Queda expresamente exento de ejecutar tests o builds cualquier requerimiento de solo análisis, investigación, redacción de planes de implementación, consultas técnicas o ediciones meramente documentales/markdown, a menos que el usuario lo solicite expresamente.
+- **Artefacto Verificable y Reproducible**: Toda verificación E2E solicitada concluye con la generación de un artefacto formal con trazas, deltas de Ledger auditados y comando determinista de reejecución.
+- **Ámbito de exclusión**: Queda terminantemente vetado ejecutar suites de pruebas E2E o builds de forma autónoma sin que medie instrucción explícita del usuario, extendiéndose esta exención a tareas de análisis, investigación, planes, consultas o documentación.
 
 ### 4. Pruebas y Auditoría de Seguridad (Zero-Trust & Ledger Inmutable)
 
@@ -83,7 +84,7 @@ Toda petición de trabajo sigue el ciclo unificado de 5 fases definido en [workf
           │
           ▼
 [3. Quality Gate y Auditoría de Seguridad]
-   (Tests automatizados + Verificación Zero-Trust / Ledger)
+   (Tests E2E solo bajo petición explícita + Verificación Zero-Trust / Ledger)
           ├──> [Fallos detectados] ──> Retorna a paso 2
           │
           └──> [Verificación Conforme]
@@ -102,13 +103,13 @@ Toda petición de trabajo sigue el ciclo unificado de 5 fases definido en [workf
 1. **PROHIBIDO** ejecutar `git commit`, `git push` o alterar ramas remotas sin autorización explícita del usuario ([workflows/git-approval-flow.md](workflows/git-approval-flow.md)).
 2. **PROHIBIDO** finalizar modificaciones de código o lógica sin sincronizar las notas de `obsidian_vault/` ([workflows/sync-vault.md](workflows/sync-vault.md)).
 3. **PROHIBIDO** generar código sin comentarios explicativos humanizados en español estilo pair programming justificando el "por qué" y las reglas de negocio ([context/conventions.md](context/conventions.md)).
-4. **PROHIBIDO** dar por concluida una funcionalidad o modificación de código con tests fallidos, asunciones no verificadas o dependencias rotas ([workflows/feature-lifecycle.md](workflows/feature-lifecycle.md)).
+4. **PROHIBIDO** dar por concluida una funcionalidad o modificación de código con tests fallidos (cuando hayan sido solicitados explícitamente), asunciones no verificadas o dependencias rotas ([workflows/feature-lifecycle.md](workflows/feature-lifecycle.md)).
 5. **PROHIBIDO** alterar balances de QuestCoins sin entrada atómica en `LedgerTransaccion` o permitir que el cliente calcule resultados de juego ([context/security.md](context/security.md)).
 6. **PROHIBIDO** insertar rutas locales absolutas de disco (`C:\...`, `file:///...`) en archivos de configuración o documentación. Emplea exclusivamente rutas relativas portables.
-7. **PROHIBIDO** ejecutar suites de pruebas (`pytest`, `npm test`) o compilaciones (`npm run build`) durante fases de análisis técnico, diseño, redacción de planes de implementación, respuestas a dudas o tareas puramente documentales, salvo indicación explícita del usuario.
+7. **PROHIBIDO** ejecutar tests end-to-end (`npm run test:e2e`, `pytest tests/`) sin la petición previa y explícita del usuario. Queda igualmente vetado ejecutar suites de pruebas o compilaciones (`npm run build`) durante fases de análisis técnico, diseño, redacción de planes de implementación, respuestas a dudas o tareas puramente documentales.
 8. **PROHIBIDO** escribir pruebas unitarias después de escribir el código o diseñar pruebas E2E triviales de baja complejidad ("camino feliz" de juguete) para certificar funcionalidades complejas ([context/testing-standards.md](context/testing-standards.md)).
 9. **PROHIBIDO** incorporar pruebas tautológicas o detectoras de cambios (change-detectors) acopladas a la estructura interna o llamadas privadas de funciones ([context/testing-standards.md](context/testing-standards.md)).
-10. **PROHIBIDO** dar por concluida una suite de verificación E2E sin generar el artefacto verificable y reproducible con comando determinista de reejecución ([context/testing-standards.md](context/testing-standards.md)).
+10. **PROHIBIDO** dar por concluida una suite de verificación E2E ejecutada (bajo petición explícita) sin generar el artefacto verificable y reproducible con comando determinista de reejecución ([context/testing-standards.md](context/testing-standards.md)).
 11. **PROHIBIDO** emplear nombres anecdóticos, folclóricos, coloquiales o humorísticos en planes de implementación, datos sintéticos de prueba, fixtures, especificaciones de testing o documentación. Debe emplearse siempre una nomenclatura estrictamente funcional, semántica y profesional que describa el rol técnico o de negocio de la entidad ([context/conventions.md](context/conventions.md)).
 12. **PROHIBIDO** dejar procesos servidores o demonios (`uvicorn`, `npm run dev`, `node.exe`, `python.exe`) huérfanos o en segundo plano tras concluir una tarea de verificación, así como esperar indefinidamente la terminación de un proceso que por diseño escucha en un socket ([tools/permissions.md](tools/permissions.md)).
 

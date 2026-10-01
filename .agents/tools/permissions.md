@@ -3,8 +3,8 @@
 ## 1. Clasificación de Comandos de Terminal
 
 ### A. Comandos Seguros Permitidos (Lista Blanca)
-Ejecuta de forma autónoma estos comandos de inspección, compilación y pruebas (siempre dentro de la fase correspondiente del ciclo de vida; no ejecutar pruebas o builds en tareas de análisis, planes o consultas):
-- **Testing**: `pytest`, `pytest-asyncio`, `npm run test`, `npx vitest` (empleando siempre el entorno virtual del backend `backend\venv\Scripts\pytest`).
+Ejecuta de forma autónoma estos comandos de inspección, compilación y verificación estática (siempre dentro de la fase correspondiente del ciclo de vida; no ejecutar pruebas o builds en tareas de análisis, planes o consultas):
+- **Testing (Únicamente bajo petición explícita del usuario)**: `pytest`, `pytest-asyncio`, `npm run test`, `npm run test:e2e` (empleando siempre el entorno virtual del backend `backend\venv\Scripts\pytest`). Queda terminantemente vetado ejecutarlos de forma autónoma sin solicitud expresa.
 - **Inspección de Estado y Git**: `git status`, `git diff`, `git log -n <N>`, `git branch`.
 - **Dependencias y Build**: `npm run build`, `npm run lint`, `pip list`.
 - **Contenedores (Estado)**: `docker ps`, `docker-compose ps`, `docker logs`.
@@ -37,7 +37,7 @@ Consulta al usuario y obtén autorización explícita antes de ejecutar:
 Para evitar bloqueos indefinidos, puertos retenidos (3000, 8000) y procesos zombi en terminal:
 
 ### A. Clasificación Estricta del Tipo de Proceso
-1. **Procesos Finitos** (ej. `pytest`, `npm run build`, `npm run test:e2e`):
+1. **Procesos Finitos** (ej. `npm run build`, o `pytest`/`npm run test:e2e` cuando hayan sido solicitados explícitamente):
    - Tienen un principio y un fin natural.
    - El agente debe esperar a que el comando termine y verificar el código de salida (exit code 0).
 2. **Servidores y Demonios** (ej. `npm run dev`, `uvicorn`):
