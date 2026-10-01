@@ -8,6 +8,9 @@ import { useGroup } from '@/context/GroupContext';
 import { useRouter } from 'next/navigation';
 import { getApiErrorMessage } from '@/lib/errorHandler';
 import TokenAmountInput from '@/components/ui/TokenAmountInput';
+import { fetchKits, injectKitIntoGroup } from '@/services/kitsService';
+import { KitEventoResponse } from '@/types';
+
 
 interface CreateGroupModalProps {
   isOpen: boolean;
@@ -40,7 +43,25 @@ export default function CreateGroupModal({
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Kits de retos opcionales para inicializar la comunidad
+  const [availableKits, setAvailableKits] = useState<KitEventoResponse[]>([]);
+  const [selectedKitId, setSelectedKitId] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    async function loadKits() {
+      try {
+        const kits = await fetchKits({ limit: 20 });
+        setAvailableKits(kits);
+      } catch {
+        // Fallback silencioso si no se pueden cargar
+      }
+    }
+    loadKits();
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
 
   /**
    * Gestiona la selección del archivo de imagen desde el carrete o cámara del dispositivo.
@@ -121,10 +142,43 @@ export default function CreateGroupModal({
       };
 
       const res = await api.post('/api/groups/', payload);
+      const newGroupId = res.data?.id;
+
+      // Inyección opcional de plantilla si fue seleccionada por el usuario
+      if (selectedKitId && newGroupId) {
+        const kitData = availableKits.find((k) => k.id === selectedKitId);
+        if (kitData?.contenido) {
+          try {
+            await injectKitIntoGroup(newGroupId, {
+              kit_id: kitData.id,
+              publicar_inmediatamente: true,
+              misiones_seleccionadas: (kitData.contenido.misiones || []).map((m) => ({
+                titulo: m.titulo,
+                descripcion: m.descripcion,
+                recompensa: m.recompensa_sugerida || 25,
+                cupo_maximo: m.cupo_maximo,
+              })),
+              ruletas_seleccionadas: (kitData.contenido.ruletas || []).map((r) => ({
+                titulo: r.titulo,
+                descripcion: r.descripcion,
+                recompensa: r.recompensa_sugerida || 25,
+              })),
+              apuestas_seleccionadas: (kitData.contenido.apuestas || []).map((a) => ({
+                titulo: a.titulo,
+                opciones: a.opciones || [],
+              })),
+            });
+            toast.success(`¡Kit "${kitData.titulo}" inyectado!`);
+          } catch {
+            toast.error('Grupo creado, pero no se pudo cargar la plantilla');
+          }
+        }
+      }
+
       toast.success('¡Grupo creado exitosamente!');
 
       // Actualizamos la lista de grupos y establecemos el nuevo grupo como activo de forma atómica
-      await refreshGroups(res.data?.id);
+      await refreshGroups(newGroupId);
 
       removeSelectedImage();
       onClose();
@@ -295,6 +349,39 @@ export default function CreateGroupModal({
               al grupo.
             </p>
           </div>
+
+          {/* Selector Opcional de Kit de Retos */}
+          {availableKits.length > 0 && (
+            <div>
+              <label
+                htmlFor="create-group-kit"
+                className="text-dracula-light mb-1.5 flex items-center gap-1.5 text-xs font-bold tracking-wider uppercase"
+              >
+                <Sparkles size={14} className="text-dracula-purple" />
+                ¿Quieres comenzar con un Kit de Retos? (Opcional)
+              </label>
+              <select
+                id="create-group-kit"
+                value={selectedKitId || ''}
+                onChange={(e) =>
+                  setSelectedKitId(e.target.value ? Number(e.target.value) : null)
+                }
+                className="bg-dracula-base border-dracula-gray/30 text-dracula-light focus:border-dracula-purple w-full rounded-xl border p-2.5 text-xs font-semibold focus:outline-none"
+              >
+                <option value="">No usar kit (Comunidad en blanco)</option>
+                {availableKits.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.es_oficial ? '⭐ ' : ''}
+                    {k.titulo} ({k.total_misiones} misiones, {k.total_ruletas} ruletas,{' '}
+                    {k.total_apuestas} apuestas)
+                  </option>
+                ))}
+              </select>
+              <p className="text-dracula-gray mt-1 text-[10px]">
+                Inyecta retos y apuestas temáticas al instante para encender el evento desde el primer segundo.
+              </p>
+            </div>
+          )}
 
           {/* Toggle de Contraseña de Acceso */}
           <div className="pt-2">

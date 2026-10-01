@@ -278,3 +278,110 @@ export interface BoletinConfigPayload {
   send_hour?: number;
   include_ranking?: boolean;
 }
+
+// ==============================================================================
+// KITS DE EVENTOS Y PRESETS
+// ==============================================================================
+export interface MisionKitItem {
+  titulo: string;
+  descripcion: string;
+  dificultad: 'facil' | 'media' | 'dificil' | string;
+  recompensa_sugerida: number;
+  cupo_maximo?: number | null;
+}
+
+export interface RuletaKitItem {
+  titulo: string;
+  descripcion: string;
+  dificultad: 'facil' | 'media' | 'dificil' | string;
+  recompensa_sugerida: number;
+}
+
+export interface OpcionApuestaKit {
+  id: string;
+  text: string;
+  multiplier: number;
+}
+
+export interface ApuestaKitItem {
+  titulo: string;
+  opciones: OpcionApuestaKit[];
+}
+
+export interface ContenidoKit {
+  misiones: MisionKitItem[];
+  ruletas: RuletaKitItem[];
+  apuestas: ApuestaKitItem[];
+}
+
+export interface KitEventoResponse {
+  id: number;
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  icono_url?: string | null;
+  autor_id?: number | null;
+  autor_username?: string | null;
+  es_oficial: boolean;
+  es_publico: boolean;
+  descargas_count: number;
+  likes_count: number;
+  is_liked_by_user?: boolean;
+  total_misiones: number;
+  total_ruletas: number;
+  total_apuestas: number;
+  contenido: ContenidoKit;
+  fecha_creacion: string;
+}
+
+export type KitEvento = KitEventoResponse;
+
+export interface CreateKitPayload {
+  titulo: string;
+  descripcion: string;
+  categoria: string;
+  icono_url?: string | null;
+  es_publico: boolean;
+  es_oficial?: boolean;
+  contenido: ContenidoKit;
+}
+
+export interface InyeccionMisionItem {
+  titulo: string;
+  descripcion: string;
+  recompensa: number;
+  cupo_maximo?: number | null;
+}
+
+export interface InyeccionRuletaItem {
+  titulo: string;
+  descripcion: string;
+  recompensa: number;
+}
+
+export interface InyeccionApuestaItem {
+  titulo: string;
+  opciones: OpcionApuestaKit[];
+}
+
+export interface InyeccionKitPayload {
+  kit_id?: number;
+  publicar_inmediatamente: boolean;
+  misiones_seleccionadas: InyeccionMisionItem[];
+  ruletas_seleccionadas: InyeccionRuletaItem[];
+  apuestas_seleccionadas: InyeccionApuestaItem[];
+}
+
+export interface InyeccionKitResult {
+  misiones_creadas: number;
+  ruletas_creadas: number;
+  apuestas_creadas: number;
+  estado_asignado: string;
+  mensaje: string;
+}
+
+export interface KitLikeResult {
+  liked: boolean;
+  likes_count: number;
+}
+

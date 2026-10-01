@@ -15,13 +15,14 @@ La documentación se organiza de forma modular mediante **Mapas de Contenido (MO
 - [[01.0 - Indice y Mapa de Vision General]] — Catálogo del concepto de aplicación, modelo de gamificación con QuestCoins, topología de red local y arquitectura multi-inquilino con aislamiento por grupos.
 
 ### 02. El Motor del Juego (Backend FastAPI)
-- [[02.0 - Indice y Mapa de El Motor Backend]] — Catálogo de servicios backend: autenticación JWT, misiones con Cloudinary, apuestas y ruleta en JSONB, muro social recursivo, SSE en tiempo real, rate limiting, WebPush VAPID y modelo relacional completo.
+- [[02.0 - Indice y Mapa de El Motor Backend]] — Catálogo de servicios backend: autenticación JWT, misiones con Cloudinary, apuestas y ruleta en JSONB, muro social recursivo, SSE en tiempo real, rate limiting, WebPush VAPID, kits de eventos e inyección atómica, y modelo relacional completo.
 
 ### 03. La Interfaz de Usuario (Frontend Next.js)
-- [[03.0 - Indice y Mapa de La Interfaz Frontend]] — Catálogo de la aplicación cliente en Next.js 16: pantallas, zona de juego en vivo Dracula, panel de administración "Modo Dios", componentes modulares y arquitectura PWA con soporte offline.
+- [[03.0 - Indice y Mapa de La Interfaz Frontend]] — Catálogo de la aplicación cliente en Next.js 16: pantallas, zona de juego en vivo Dracula, panel de administración "Modo Dios", componentes modulares, catálogo de kits y arquitectura PWA con soporte offline.
 
 ### 04. Flujos del Juego (Historias de Usuario)
-- [[04.0 - Indice y Mapa de Flujos del Juego]] — Catálogo de diagramas de secuencia e interacciones de negocio: flujo de validación comunitaria de misiones y flujo transaccional de depósitos de garantía en duelos 1vs1.
+- [[04.0 - Indice y Mapa de Flujos del Juego]] — Catálogo de diagramas de secuencia e interacciones de negocio: validación comunitaria de misiones, flujo transaccional de duelos 1vs1 e inyección/empaquetado atómico de kits.
+
 
 ### 05. Guías Prácticas y Operaciones
 - [[05.0 - Indice y Mapa de Guias Practicas]] — Procedimientos operativos estándar: manual de encendido en desarrollo local, suite de pruebas automatizadas con Pytest, despliegue en producción con NGINX/Docker Compose y despliegue Serverless unificado en Vercel con Supabase.
@@ -52,6 +53,12 @@ La documentación se organiza de forma modular mediante **Mapas de Contenido (MO
 - Punto de entrada Backend Serverless: [backend/main.py](vscode://file/c:/.d/questfest-project/backend/main.py:1)
 - Hook de sondeo reactivo inteligente: [frontend/src/hooks/useFeedStream.ts](vscode://file/c:/.d/questfest-project/frontend/src/hooks/useFeedStream.ts:1)
 - Configuración de Vercel Services: [vercel.json](vscode://file/c:/.d/questfest-project/vercel.json:1)
+- Modelos relacionales de kits de eventos: [backend/app/models/kits.py](vscode://file/c:/.d/questfest-project/backend/app/models/kits.py:1)
+- Lógica transaccional de inyección de kits: [backend/app/crud/kits_crud.py](vscode://file/c:/.d/questfest-project/backend/app/crud/kits_crud.py:1)
+- Enrutador REST de kits: [backend/app/api/routers/kits.py](vscode://file/c:/.d/questfest-project/backend/app/api/routers/kits.py:1)
+- Componente de catálogo de kits: [frontend/src/components/kits/WelcomeKitsTab.tsx](vscode://file/c:/.d/questfest-project/frontend/src/components/kits/WelcomeKitsTab.tsx:1)
+- Asistente de previsualización e inyección inline: [frontend/src/components/kits/KitPreviewAndInjectModal.tsx](vscode://file/c:/.d/questfest-project/frontend/src/components/kits/KitPreviewAndInjectModal.tsx:1)
+
 
 ---
 

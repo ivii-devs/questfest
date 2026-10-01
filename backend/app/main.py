@@ -25,6 +25,7 @@ from app.api.routers import (
     apuestas,
     duelos,
     groups,
+    kits,
     misiones,
     notifications,
     public_profile,
@@ -164,6 +165,9 @@ app.include_router(notifications.router, prefix="/api/notifications", tags=["Not
 app.include_router(upload.router, prefix="/api/upload", tags=["Uploads"])
 app.include_router(ranking.router, prefix="/api/ranking", tags=["Ranking"])
 app.include_router(groups.router, prefix="/api/groups", tags=["Grupos"])
+app.include_router(groups.router, prefix="/api/v1/grupos", tags=["Grupos (v1)"])
+app.include_router(kits.router, prefix="/api/v1/kits", tags=["Kits de Eventos (v1)"])
+app.include_router(kits.router, prefix="/api/kits", tags=["Kits de Eventos"])
 
 
 @app.get("/")

@@ -21,11 +21,15 @@ import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 import { getApiErrorMessage } from '@/lib/errorHandler';
 import DeleteGroupModal from '@/components/groups/DeleteGroupModal';
+import SaveGroupAsKitModal from '@/components/kits/SaveGroupAsKitModal';
+import { Sparkles, Package } from 'lucide-react';
 import { MiembroGrupoResponse } from '@/types';
+
 import AdminGroupGeneralInfo from './groups/AdminGroupGeneralInfo';
 import AdminGroupInviteSection from './groups/AdminGroupInviteSection';
 import AdminGroupMembersRoster from './groups/AdminGroupMembersRoster';
 import AdminGroupDangerZone from './groups/AdminGroupDangerZone';
+
 
 export default function TabGrupoSettings() {
   const router = useRouter();
@@ -49,6 +53,10 @@ export default function TabGrupoSettings() {
 
   // Modal de Eliminación de Grupo (Zona de Peligro)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Modal de Empaquetado a Kit
+  const [isSaveKitOpen, setIsSaveKitOpen] = useState(false);
+
 
   const fetchInviteAndMembers = useCallback(async () => {
     if (!activeGroup) return;
@@ -167,10 +175,51 @@ export default function TabGrupoSettings() {
         onToggleRole={handleToggleMemberRole}
       />
 
-      {/* Sección 4: Zona de Peligro (Soberanía Exclusiva del Creador / Fundador) */}
+      {/* Sección 4: Kits de Eventos y Plantillas */}
+      <div className="bg-dracula-card border-dracula-gray/20 rounded-2xl border p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={18} className="text-dracula-purple" />
+          <h3 className="text-dracula-light text-sm font-black tracking-wide">
+            Kits de Eventos y Plantillas
+          </h3>
+        </div>
+        <p className="text-dracula-gray text-xs leading-relaxed">
+          Inyecta lotes de retos prediseñados para dinamizar el grupo o empaqueta los retos actuales de esta comunidad como una plantilla reutilizable.
+        </p>
+
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 pt-1">
+          <button
+            type="button"
+            onClick={() => router.push(`/groups?tab=kits&groupId=${activeGroup.id}`)}
+            className="btn-press bg-dracula-purple/20 hover:bg-dracula-purple/30 border-dracula-purple/40 text-dracula-purple flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-all"
+          >
+            <Sparkles size={15} />
+            <span>Cargar Kit de Evento</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsSaveKitOpen(true)}
+            className="btn-press bg-dracula-card hover:bg-dracula-base border-dracula-gray/30 text-dracula-light flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition-all"
+          >
+            <Package size={15} />
+            <span>Guardar como Kit</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sección 5: Zona de Peligro (Soberanía Exclusiva del Creador / Fundador) */}
       <AdminGroupDangerZone
         isCurrentUserCreator={isCurrentUserCreator}
         onOpenDeleteModal={() => setIsDeleteModalOpen(true)}
+      />
+
+      {/* Modal de empaquetado de grupo a kit */}
+      <SaveGroupAsKitModal
+        isOpen={isSaveKitOpen}
+        onClose={() => setIsSaveKitOpen(false)}
+        groupId={activeGroup.id}
+        groupName={activeGroup.nombre}
       />
 
       {/* Modal de confirmación obligatoria mediante nombre exacto */}
@@ -183,6 +232,7 @@ export default function TabGrupoSettings() {
           router.replace('/groups');
         }}
       />
+
     </div>
   );
 }

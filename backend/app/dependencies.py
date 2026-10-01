@@ -24,6 +24,7 @@ from app.crud.user_crud import get_user_by_id
 # 'tokenUrl' define el endpoint relativo donde el cliente (o la interfaz Swagger UI)
 # intercambia credenciales 'username' y 'password' por el token JWT.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_optional_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
@@ -59,6 +60,28 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
 
     return user
+
+
+async def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_optional_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[models.usuario.Usuario]:
+    """
+    Guardián de Autenticación Opcional.
+    Permite el acceso a endpoints de lectura pública (como el catálogo de kits),
+    hidratando la identidad del usuario si envía un token válido o retornando None si navega como invitado.
+    """
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, security.SECRET_KEY, algorithms=[security.ALGORITHM])
+        user_id: int = payload.get("user_id")
+        if user_id is None:
+            return None
+        return await get_user_by_id(db, user_id)
+    except JWTError:
+        return None
+
 
 
 async def get_admin_user(

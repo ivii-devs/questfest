@@ -4,6 +4,7 @@ from app.models.configuracion import ConfiguracionGlobal
 from app.models.grupo import Grupo, MiembroGrupo
 from app.models.juegos import Apuesta, Duelo, RegistroRuleta, TicketApuesta
 from app.models.misiones import Mision, MisionRuletaAceptada, PruebaMision, VotoMision
+from app.models.kits import KitEvento, KitLike, KitReporte
 from app.models.notificaciones import NotificacionAdmin, NotificacionLeida
 from app.models.publicaciones import Publicacion
 from app.models.push import PushSubscription
@@ -31,4 +32,8 @@ __all__ = [
     "AuditLog",
     "Grupo",
     "MiembroGrupo",
+    "KitEvento",
+    "KitLike",
+    "KitReporte",
 ]
+

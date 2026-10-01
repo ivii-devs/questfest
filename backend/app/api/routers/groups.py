@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rate_limiter import limiter
-from app.crud import grupo_crud
+from app.crud import grupo_crud, kits_crud
 from app.dependencies import get_current_user
 from app.models.usuario import Usuario
 from app.schemas.grupo_schemas import (
@@ -38,8 +38,10 @@ from app.schemas.grupo_schemas import (
     UpdateMemberRoleRequest,
     UserGroupCardResponse,
 )
+from app.schemas.kits_schemas import InyeccionKitRequest, InyeccionKitResponse
 
 router = APIRouter()
+
 
 
 @router.post("/", response_model=GroupResponse, status_code=status.HTTP_201_CREATED)
@@ -214,3 +216,25 @@ async def change_member_role(
         new_role=role_data.rol,
     )
     return {"message": f"Rol de usuario actualizado a {role_data.rol}."}
+
+
+@router.post("/{group_id}/kits/inject", response_model=InyeccionKitResponse)
+@limiter.limit("15/minute")
+async def inject_kit_into_group(
+    request: Request,
+    group_id: int,
+    payload: InyeccionKitRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Inyecta atómicamente un lote de misiones y apuestas desde un Kit de Eventos en el grupo.
+    ACCESO RESTRINGIDO: Exclusivo para administradores del grupo.
+    """
+    return await kits_crud.inyectar_kit_en_grupo(
+        db=db,
+        grupo_id=group_id,
+        user=current_user,
+        payload=payload,
+    )
+

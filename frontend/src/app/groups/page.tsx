@@ -13,7 +13,7 @@
  */
 
 import React, { useState } from 'react';
-import { Users, User, Settings, LogOut } from 'lucide-react';
+import { Users, User, Settings, LogOut, Sparkles } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useGroup, GroupMembership } from '@/context/GroupContext';
@@ -24,6 +24,7 @@ import DeleteGroupModal from '@/components/groups/DeleteGroupModal';
 import WelcomeGroupListTab from '@/components/groups/WelcomeGroupListTab';
 import WelcomeProfileTab from '@/components/groups/WelcomeProfileTab';
 import WelcomeSettingsTab from '@/components/groups/WelcomeSettingsTab';
+import WelcomeKitsTab from '@/components/kits/WelcomeKitsTab';
 import toast from 'react-hot-toast';
 import { getApiErrorMessage } from '@/lib/errorHandler';
 
@@ -31,15 +32,24 @@ function WelcomeHubContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as
-    'grupos' | 'perfil' | 'ajustes' | null;
+    'grupos' | 'kits' | 'perfil' | 'ajustes' | null;
 
   const { user, logout } = useAuth();
   const { groups, activeGroup, loading, setActiveGroupById, leaveGroup } =
     useGroup();
 
-  const [activeTab, setActiveTab] = useState<'grupos' | 'perfil' | 'ajustes'>(
+  const [activeTab, setActiveTab] = useState<'grupos' | 'kits' | 'perfil' | 'ajustes'>(
     initialTab || 'grupos'
   );
+
+  // Sincroniza la pestaña activa si cambia el query param en la URL
+  React.useEffect(() => {
+    const tab = searchParams.get('tab') as 'grupos' | 'kits' | 'perfil' | 'ajustes' | null;
+    if (tab && ['grupos', 'kits', 'perfil', 'ajustes'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
 
   // Modales
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -110,18 +120,19 @@ function WelcomeHubContent() {
           </button>
         </div>
 
-        {/* 3 Pestañas Principales del Hub */}
+        {/* 4 Pestañas Principales del Hub */}
         <div className="bg-dracula-card/80 border-dracula-gray/20 flex rounded-xl border p-1">
           <button
             onClick={() => setActiveTab('grupos')}
-            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all ${
               activeTab === 'grupos'
                 ? 'bg-dracula-purple text-dracula-base shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
             <Users size={16} />
-            <span>Mis Grupos</span>
+            <span className="hidden xs:inline">Mis</span>
+            <span>Grupos</span>
             {groups.length > 0 && (
               <span
                 className={`py-0.2 rounded-full px-1.5 text-[10px] font-black ${
@@ -136,20 +147,33 @@ function WelcomeHubContent() {
           </button>
 
           <button
+            onClick={() => setActiveTab('kits')}
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all ${
+              activeTab === 'kits'
+                ? 'bg-dracula-purple text-dracula-base shadow-md'
+                : 'text-dracula-gray hover:text-dracula-light'
+            }`}
+          >
+            <Sparkles size={16} />
+            <span>Kits</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('perfil')}
-            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all ${
               activeTab === 'perfil'
                 ? 'bg-dracula-purple text-dracula-base shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
             }`}
           >
             <User size={16} />
-            <span>Mi Perfil</span>
+            <span className="hidden xs:inline">Mi</span>
+            <span>Perfil</span>
           </button>
 
           <button
             onClick={() => setActiveTab('ajustes')}
-            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all ${
+            className={`btn-press flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-bold transition-all ${
               activeTab === 'ajustes'
                 ? 'bg-dracula-purple text-dracula-base shadow-md'
                 : 'text-dracula-gray hover:text-dracula-light'
@@ -176,6 +200,19 @@ function WelcomeHubContent() {
             onLeaveGroup={handleLeaveGroup}
             setActiveGroupById={setActiveGroupById}
             currentUserId={user?.id}
+          />
+        )}
+
+        {activeTab === 'kits' && (
+          <WelcomeKitsTab
+            groups={groups}
+            currentUserId={user?.id}
+            isGlobalAdmin={user?.rol === 'admin'}
+            preselectedGroupId={
+              searchParams.get('groupId')
+                ? Number(searchParams.get('groupId'))
+                : undefined
+            }
           />
         )}
 
