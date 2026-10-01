@@ -43,6 +43,12 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
       const rawPosts: Post[] = response.data;
       const mappedPosts: Post[] = rawPosts.map((p) => ({
         ...p,
+        content: p.content,
+        is_system: Boolean(p.is_system),
+        replies: (p.replies || []).map((r) => ({
+          ...r,
+          content: r.content,
+        })),
         exactTime: formatExactTime(p.time_ago),
       }));
       setPosts(mappedPosts);
@@ -84,6 +90,12 @@ export function useFeedStream(user: User | null, groupId?: number | null) {
 
       const mappedPosts: Post[] = rawPosts.map((p) => ({
         ...p,
+        content: p.content,
+        is_system: Boolean(p.is_system),
+        replies: (p.replies || []).map((r) => ({
+          ...r,
+          content: r.content,
+        })),
         exactTime: formatExactTime(p.time_ago),
       }));
 

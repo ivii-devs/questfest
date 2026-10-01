@@ -21,6 +21,7 @@ import React, {
   useEffect,
   ReactNode,
   useCallback,
+  useRef,
 } from 'react';
 import api from '@/lib/axios';
 import { useAuth } from './AuthContext';
@@ -63,6 +64,11 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
   const [groups, setGroups] = useState<GroupMembership[]>([]);
   const [activeGroup, setActiveGroup] = useState<GroupMembership | null>(null);
   const [loading, setLoading] = useState(true);
+  const activeGroupRef = useRef<GroupMembership | null>(null);
+
+  useEffect(() => {
+    activeGroupRef.current = activeGroup;
+  }, [activeGroup]);
 
   /**
    * Carga la lista de grupos a los que pertenece el usuario autenticado
@@ -91,7 +97,11 @@ export const GroupProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        setLoading(true);
+        // Solo activamos loading global si aún no hay un grupo activo cargado (carga inicial en frío).
+        // Si ya disponemos de activeGroup, refrescamos en segundo plano sin desmontar la UI ni el BottomNav.
+        if (!activeGroupRef.current) {
+          setLoading(true);
+        }
         const res = await api.get('/api/groups/my-groups');
         const fetchedGroups: GroupMembership[] = res.data;
         setGroups(fetchedGroups);

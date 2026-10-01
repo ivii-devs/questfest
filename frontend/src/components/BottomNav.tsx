@@ -57,9 +57,17 @@ export default function BottomNav() {
 
   const hasNewPosts = hasUnreadPost && pathname !== '/feed';
 
-  // Ocultamos la barra en vistas excluidas, durante la fase de carga inicial,
-  // o si el usuario no tiene un grupo activo seleccionado (evitando parpadeos en el arranque).
-  if (isExcludedPath || authLoading || groupsLoading || !user || !activeGroup) {
+  // Ocultamos la barra en vistas excluidas, durante la fase de carga inicial en frío,
+  // o si el usuario no tiene un grupo activo seleccionado.
+  // CRÍTICO: Si activeGroup ya está presente en memoria, una revalidación en segundo plano
+  // jamás debe desmontar la barra inferior para evitar parpadeos al navegar entre pestañas.
+  if (
+    isExcludedPath ||
+    authLoading ||
+    (!activeGroup && groupsLoading) ||
+    !user ||
+    !activeGroup
+  ) {
     return null;
   }
 

@@ -138,7 +138,7 @@ function FeedCardComponent({ post, onRefresh, onReply }: FeedCardProps) {
               <span className="text-dracula-light text-sm font-bold">
                 {post.author}
               </span>
-              {post.es_sistema && (
+              {post.is_system && (
                 <span className="bg-dracula-purple/20 text-dracula-purple rounded px-1.5 py-0.5 text-[10px] font-black uppercase">
                   Sistema
                 </span>
@@ -153,7 +153,7 @@ function FeedCardComponent({ post, onRefresh, onReply }: FeedCardProps) {
 
       {/* Contenido principal */}
       <p className="text-dracula-light text-sm leading-relaxed whitespace-pre-line">
-        {post.contenido}
+        {post.content}
       </p>
 
       {/* Media adjunta */}
@@ -187,7 +187,7 @@ function FeedCardComponent({ post, onRefresh, onReply }: FeedCardProps) {
               <span className="text-dracula-purple mr-1.5 font-bold">
                 @{reply.author}:
               </span>
-              <span>{reply.contenido}</span>
+              <span>{reply.content}</span>
             </div>
           ))}
         </div>
@@ -261,7 +261,7 @@ export const FeedCard = React.memo(
   (prevProps, nextProps) => {
     return (
       prevProps.post.id === nextProps.post.id &&
-      prevProps.post.contenido === nextProps.post.contenido &&
+      prevProps.post.content === nextProps.post.content &&
       (prevProps.post.replies?.length || 0) ===
         (nextProps.post.replies?.length || 0)
     );

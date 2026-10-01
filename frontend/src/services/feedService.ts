@@ -63,7 +63,7 @@ export async function replyToPost(
   return {
     id: response.data.reply_id,
     author: '',
-    contenido: content,
+    content,
     media_url: mediaUrl || null,
   };
 }

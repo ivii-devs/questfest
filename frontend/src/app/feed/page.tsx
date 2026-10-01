@@ -20,7 +20,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Dna, ChevronRight } from 'lucide-react';
+import { Dna, ChevronRight, Home } from 'lucide-react';
 import PullToRefresh from '@/components/PullToRefresh';
 import CreatePostForm from '@/components/CreatePostForm';
 import FeedCard from '@/components/FeedCard';
@@ -79,9 +79,9 @@ export default function FeedPage() {
     if (spun) setHasSpunToday(true);
   }, [isRouletteModalOpen]);
 
-  // Si la autenticación o los grupos están cargando, o no hay grupo activo (en proceso de redirección al Hub),
+  // Si la autenticación o los grupos están en carga inicial en frío, o no hay grupo activo,
   // mostramos el marco de espera neutro del App Shell para prevenir cualquier parpadeo de contenido (FOUC).
-  if (authLoading || groupsLoading || !activeGroup) {
+  if (authLoading || (!activeGroup && groupsLoading) || !activeGroup) {
     return (
       <div className="text-dracula-light fixed inset-0 flex h-[100dvh] w-full flex-col items-center justify-center bg-[var(--theme-app-bg)] select-none">
         <div className="border-dracula-purple/30 border-t-dracula-purple mb-4 h-10 w-10 animate-spin rounded-full border-3" />
@@ -103,13 +103,16 @@ export default function FeedPage() {
 
       {/* Cabecera Principal del Feed (App Shell - Capa Superior Fija) */}
       <header className="bg-dracula-base/95 app-shell-header border-dracula-gray/20 pt-safe-top z-40 flex flex-shrink-0 items-center justify-between border-b px-4 pb-3 backdrop-blur-md select-none">
-        <div>
-          <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
-            Feed
-          </h1>
-          <span className="text-dracula-gray block text-[10px] font-bold">
-            Comunidad: {activeGroup.nombre}
-          </span>
+        <div className="flex items-center gap-2.5">
+          <Home size={26} className="text-dracula-purple" />
+          <div>
+            <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
+              Feed
+            </h1>
+            <span className="text-dracula-gray block text-[10px] font-bold">
+              {activeGroup?.nombre || 'Comunidad'}
+            </span>
+          </div>
         </div>
         <GroupSwitcher />
       </header>

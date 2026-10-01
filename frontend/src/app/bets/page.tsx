@@ -35,7 +35,7 @@ export type BetItem = ApuestaResponse;
 
 export default function BetsPage() {
   const { refreshProfile } = useAuth();
-  const { activeGroup, updateActiveGroupBalance, refreshGroups } = useGroup();
+  const { activeGroup, updateActiveGroupBalance } = useGroup();
   const [activeTab, setActiveTab] = useState<
     'abiertas' | 'propuestas' | 'cerradas'
   >('abiertas');
@@ -55,7 +55,6 @@ export default function BetsPage() {
       const params = activeGroup ? { group_id: activeGroup.id } : {};
       const res = await api.get('/api/apuestas/', { params });
       setBetsList(res.data);
-      refreshGroups();
     } catch (error) {
       console.error('Error fetching bets:', error);
     }

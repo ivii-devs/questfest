@@ -41,7 +41,7 @@ type PostResponse = {
   time_ago: string;
   content: string;
   media_url: string | null;
-  is_system: boolean;
+  is_system?: boolean;
 };
 
 type ApuestaResponse = {

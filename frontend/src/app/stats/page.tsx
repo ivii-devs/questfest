@@ -120,14 +120,14 @@ export default function GroupStatsPage() {
       {/* Cabecera de la Página con soporte de Área Segura (iPhone notch) */}
       <header className="bg-dracula-base/95 border-dracula-gray/20 pt-safe-top app-shell-header z-40 flex-shrink-0 border-b px-4 pb-3 backdrop-blur-md select-none">
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart2 size={22} className="text-dracula-purple" />
+          <div className="flex items-center gap-2.5">
+            <BarChart2 size={26} className="text-dracula-cyan" />
             <div>
               <h1 className="text-dracula-light text-lg font-black tracking-wide uppercase">
-                Estadísticas del Grupo
+                Estadísticas
               </h1>
-              <span className="text-dracula-purple text-[11px] font-bold">
-                {activeGroup.nombre}
+              <span className="text-dracula-gray block text-[10px] font-bold">
+                {activeGroup?.nombre || 'Comunidad'}
               </span>
             </div>
           </div>

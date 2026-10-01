@@ -229,7 +229,7 @@ export interface FeedReplyResponse {
   id: number;
   author: string;
   author_avatar_url?: string | null;
-  contenido: string;
+  content: string;
   fecha_creacion?: string;
   media_url?: string | null;
 }
@@ -240,9 +240,9 @@ export interface FeedPostResponse {
   author: string;
   author_id?: number;
   author_avatar_url?: string | null;
-  contenido: string;
+  content: string;
   media_url?: string | null;
-  es_sistema?: boolean;
+  is_system?: boolean;
   time_ago?: string;
   exactTime?: string;
   fecha_creacion?: string;

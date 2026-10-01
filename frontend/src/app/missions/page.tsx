@@ -68,7 +68,7 @@ interface SuggestMissionModalProps {
 // COMPONENTE PRINCIPAL
 // ============================================================================
 export default function MissionsPage() {
-  const { activeGroup, refreshGroups } = useGroup();
+  const { activeGroup } = useGroup();
 
   // Pestaña de navegación activa
   const [activeTab, setActiveTab] = useState<
@@ -98,7 +98,6 @@ export default function MissionsPage() {
         const res = await api.get('/api/misiones/closed', { params });
         setClosedMissions(res.data);
       }
-      refreshGroups();
     } catch (error) {
       console.error('Error fetching missions:', error);
     }
